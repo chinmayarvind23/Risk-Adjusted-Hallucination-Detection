@@ -3,3 +3,4 @@
 data/
 .hf/
 venv/
+__pycache__/
