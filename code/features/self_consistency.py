@@ -92,12 +92,25 @@ import numpy as np
 import nltk
 
 def split_sentences(text):
-    return [s.strip() for s in nltk.sent_tokenize(text) if len(s.strip()) > 0]
+    try:
+        return [s.strip() for s in nltk.sent_tokenize(text) if len(s.strip()) > 0]
+    except LookupError:
+        try:
+            nltk.download("punkt", quiet=True)
+            return [s.strip() for s in nltk.sent_tokenize(text) if len(s.strip()) > 0]
+        except LookupError:
+            pass
+
+    return [segment.strip() for segment in text.replace("\n", " ").split(".") if segment.strip()]
 
 
 def self_consistency(sampled_answers, sbert_model, batch_size=32):
     if len(sampled_answers) < 2:
-        return 0.0
+        return {
+            "base_consistency_score": 1.0,
+            "disagreement_score": 0.0,
+            "num_samples": len(sampled_answers),
+        }
 
     base_answer = sampled_answers[0]
     other_answers = sampled_answers[1:]
@@ -106,7 +119,11 @@ def self_consistency(sampled_answers, sbert_model, batch_size=32):
     sample_sents = [split_sentences(ans) for ans in other_answers]
 
     if len(base_sents) == 0:
-        return 0.0
+        return {
+            "base_consistency_score": 1.0,
+            "disagreement_score": 0.0,
+            "num_samples": len(sampled_answers),
+        }
 
     all_sentences = base_sents + [s for sample in sample_sents for s in sample]
 
@@ -144,7 +161,15 @@ def self_consistency(sampled_answers, sbert_model, batch_size=32):
             sentence_scores.append(np.mean(per_sample_scores))
 
     if len(sentence_scores) == 0:
-        return 0.0
+        return {
+            "base_consistency_score": 1.0,
+            "disagreement_score": 0.0,
+            "num_samples": len(sampled_answers),
+        }
 
     consistency_score = np.mean(sentence_scores)
-    return float(consistency_score)
+    return {
+        "base_consistency_score": float(consistency_score),
+        "disagreement_score": float(1.0 - consistency_score),
+        "num_samples": len(sampled_answers),
+    }
