@@ -168,8 +168,9 @@ def self_consistency(sampled_answers, sbert_model, batch_size=32):
         }
 
     consistency_score = np.mean(sentence_scores)
+    disagreement_score = float(np.clip(1.0 - consistency_score, 0.0, 1.0))
     return {
         "base_consistency_score": float(consistency_score),
-        "disagreement_score": float(1.0 - consistency_score),
+        "disagreement_score": disagreement_score,
         "num_samples": len(sampled_answers),
     }

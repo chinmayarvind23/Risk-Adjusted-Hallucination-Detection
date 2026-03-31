@@ -198,9 +198,12 @@ def evidence_consistency(tokenizer, model, context: str, answer: str) -> Dict[st
     mean_entailment = sum(result["entailment"] for result in sentence_results) / total_sentences
     mean_contradiction = sum(result["contradiction"] for result in sentence_results) / total_sentences
     mean_neutral = sum(result["neutral"] for result in sentence_results) / total_sentences
+    discrete_groundedness_score = entailed_fraction - contradicted_fraction
+    continuous_groundedness_score = mean_entailment - mean_contradiction
 
     return {
-        "groundedness_score": entailed_fraction - contradicted_fraction,
+        "groundedness_score": continuous_groundedness_score,
+        "discrete_groundedness_score": discrete_groundedness_score,
         "entailed_fraction": entailed_fraction,
         "contradicted_fraction": contradicted_fraction,
         "neutral_fraction": neutral_fraction,

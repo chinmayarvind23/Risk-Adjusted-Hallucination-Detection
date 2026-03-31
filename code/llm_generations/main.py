@@ -4,6 +4,7 @@ import argparse
 import json
 import re
 import sys
+import time
 import urllib.request
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
@@ -131,6 +132,24 @@ def build_judge_messages(question: str, context: str, answer: str) -> List[Dict[
     ]
 
 
+def build_judge_repair_messages(raw_judge_output: str) -> List[Dict[str, str]]:
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are repairing a hallucination-judge output into strict JSON. "
+                "Return only JSON with keys label, binary_label, explanation. "
+                "Use label=supported and binary_label=0 when the candidate answer is fully supported by the evidence. "
+                "Use label=unsupported and binary_label=1 when it is contradicted, unverifiable, or adds unsupported facts."
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"Normalize this output into the required JSON schema only:\n\n{raw_judge_output}",
+        },
+    ]
+
+
 def _extract_json_object(text: str) -> Dict[str, Any]:
     stripped = text.strip()
     try:
@@ -162,6 +181,12 @@ def _normalize_binary_judge_label(parsed: Dict[str, Any]) -> int:
     if label == "supported":
         return 0
     if label == "unsupported":
+        return 1
+
+    correctness = str(parsed.get("correctness", "")).strip().lower()
+    if correctness in {"correct", "supported"}:
+        return 0
+    if correctness in {"incorrect", "unsupported", "hallucinated", "hallucination"}:
         return 1
     raise ValueError(f"Could not normalize judge output: {parsed}")
 
@@ -395,7 +420,23 @@ def generate_gt(
     )
     judge_text = response.get("message", {}).get("content", "")
     parsed = _extract_json_object(judge_text)
-    binary_label = _normalize_binary_judge_label(parsed)
+    try:
+        binary_label = _normalize_binary_judge_label(parsed)
+    except ValueError:
+        repair_response = _ollama_chat(
+            model=big_model,
+            messages=build_judge_repair_messages(judge_text),
+            temperature=0.0,
+            num_predict=max_tokens,
+            top_p=1.0,
+            top_k=50,
+            seed=None,
+            ollama_url=ollama_url,
+        )
+        repaired_text = repair_response.get("message", {}).get("content", "")
+        parsed = _extract_json_object(repaired_text)
+        binary_label = _normalize_binary_judge_label(parsed)
+        judge_text = repaired_text
     return {
         "judge_model": big_model,
         "raw_response": judge_text,
@@ -481,11 +522,19 @@ def make_api_call_to_wikimedia(title: str) -> str:
         return ""
 
 
-def summarize_results(records: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
+def summarize_results(records: Sequence[Dict[str, Any]], elapsed_seconds: Optional[float] = None) -> Dict[str, Any]:
     if not records:
-        return {"num_examples": 0}
+        summary: Dict[str, Any] = {"num_examples": 0}
+        if elapsed_seconds is not None:
+            summary["elapsed_seconds"] = elapsed_seconds
+            summary["elapsed_minutes"] = elapsed_seconds / 60.0
+        return summary
 
     summary: Dict[str, Any] = {"num_examples": len(records)}
+    if elapsed_seconds is not None:
+        summary["elapsed_seconds"] = elapsed_seconds
+        summary["elapsed_minutes"] = elapsed_seconds / 60.0
+        summary["examples_per_second"] = len(records) / elapsed_seconds if elapsed_seconds > 0 else None
 
     def _mean(values: Sequence[Optional[float]]) -> Optional[float]:
         filtered = [value for value in values if value is not None]
@@ -561,6 +610,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
 def main() -> None:
     args = _build_arg_parser().parse_args()
     _ensure_data_dirs()
+    start_time = time.perf_counter()
 
     output_file = Path(args.output_file) if args.output_file else _default_output_file_for_dataset(
         args.dataset,
@@ -701,12 +751,14 @@ def main() -> None:
     with output_file.open("w", encoding="utf-8") as handle:
         json.dump(records, handle, indent=2, ensure_ascii=False)
 
-    summary = summarize_results(records)
+    elapsed_seconds = time.perf_counter() - start_time
+    summary = summarize_results(records, elapsed_seconds=elapsed_seconds)
     with summary_file.open("w", encoding="utf-8") as handle:
         json.dump(summary, handle, indent=2, ensure_ascii=False)
 
     print(f"Saved {len(records)} {args.dataset} records to: {output_file}")
     print(f"Saved summary to: {summary_file}")
+    print(f"Elapsed time: {elapsed_seconds:.2f}s ({elapsed_seconds / 60.0:.2f} min)")
     print(json.dumps(summary, indent=2))
 
 
