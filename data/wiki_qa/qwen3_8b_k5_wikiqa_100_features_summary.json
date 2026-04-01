@@ -1,0 +1,19 @@
+{
+  "num_examples": 100,
+  "elapsed_seconds": 26238.714485200006,
+  "elapsed_minutes": 437.31190808666673,
+  "examples_per_second": 0.0038111623210963777,
+  "mean_token_nll": 0.08700333187701391,
+  "mean_self_consistency_disagreement": 0.11990638375282288,
+  "mean_semantic_entropy": 0.44345692093270644,
+  "mean_groundedness_score": 0.6606211948394776,
+  "ground_truth_label_histogram": {
+    "0": 86,
+    "1": 14
+  },
+  "judge_label_histogram": {
+    "0": 50,
+    "1": 50
+  },
+  "judge_vs_dataset_label_accuracy": 0.5
+}

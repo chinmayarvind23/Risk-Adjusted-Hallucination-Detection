@@ -1,0 +1,21 @@
+Saved 10 phantom records to: data\phantom\qwen3_8b_k5_phantom_10_features.json
+Saved summary to: data\phantom\qwen3_8b_k5_phantom_10_features_summary.json
+Elapsed time: 800.12s (13.34 min)
+{
+  "num_examples": 10,
+  "elapsed_seconds": 800.1232620000083,
+  "elapsed_minutes": 13.335387700000137,
+  "examples_per_second": 0.012498074327952606,
+  "mean_token_nll": 0.006641801492300617,
+  "mean_self_consistency_disagreement": 0.0036332190036773683,
+  "mean_semantic_entropy": 0.05455969944520609,
+  "mean_groundedness_score": 0.9679731369018555,
+  "ground_truth_label_histogram": {
+    "not hallucination": 5,
+    "hallucination": 5
+  },
+  "judge_label_histogram": {
+    "0": 10
+  },
+  "judge_vs_dataset_label_accuracy": 0.5
+}
