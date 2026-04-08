@@ -12,6 +12,10 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 import torch
 from datasets import Dataset
 from transformers import AutoModelForCausalLM, AutoModelForSequenceClassification, AutoTokenizer
+try:
+    from tqdm.auto import tqdm
+except ImportError:  # pragma: no cover
+    tqdm = None
 
 CODE_ROOT = Path(__file__).resolve().parent.parent
 if str(CODE_ROOT) not in sys.path:
@@ -159,10 +163,39 @@ def _extract_json_object(text: str) -> Dict[str, Any]:
     except json.JSONDecodeError:
         pass
 
-    match = re.search(r"\{.*\}", stripped, flags=re.DOTALL)
-    if not match:
+    start = stripped.find("{")
+    if start == -1:
         raise ValueError(f"Could not parse judge output: {text}")
-    parsed = json.loads(match.group(0))
+
+    depth = 0
+    in_string = False
+    escape = False
+    end = None
+    for idx, char in enumerate(stripped[start:], start=start):
+        if in_string:
+            if escape:
+                escape = False
+            elif char == "\\":
+                escape = True
+            elif char == '"':
+                in_string = False
+            continue
+
+        if char == '"':
+            in_string = True
+        elif char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                end = idx + 1
+                break
+
+    if end is None:
+        raise ValueError(f"Could not parse judge output: {text}")
+
+    candidate = stripped[start:end]
+    parsed = json.loads(candidate)
     if not isinstance(parsed, dict):
         raise ValueError(f"Judge output was not an object: {text}")
     return parsed
@@ -189,6 +222,29 @@ def _normalize_binary_judge_label(parsed: Dict[str, Any]) -> int:
     if correctness in {"incorrect", "unsupported", "hallucinated", "hallucination"}:
         return 1
     raise ValueError(f"Could not normalize judge output: {parsed}")
+
+
+def _extract_binary_label_from_text(text: str) -> Optional[int]:
+    binary_match = re.search(r'"binary_label"\s*:\s*([01])', text)
+    if binary_match:
+        return int(binary_match.group(1))
+
+    label_match = re.search(r'"label"\s*:\s*"(supported|unsupported)"', text, flags=re.IGNORECASE)
+    if label_match:
+        return 0 if label_match.group(1).lower() == "supported" else 1
+
+    correctness_match = re.search(
+        r'"correctness"\s*:\s*"(correct|incorrect|supported|unsupported|hallucinated|hallucination)"',
+        text,
+        flags=re.IGNORECASE,
+    )
+    if correctness_match:
+        normalized = correctness_match.group(1).lower()
+        if normalized in {"correct", "supported"}:
+            return 0
+        return 1
+
+    return None
 
 
 def _normalize_binary_dataset_label(label: Any) -> Optional[int]:
@@ -419,8 +475,8 @@ def generate_gt(
         ollama_url=ollama_url,
     )
     judge_text = response.get("message", {}).get("content", "")
-    parsed = _extract_json_object(judge_text)
     try:
+        parsed = _extract_json_object(judge_text)
         binary_label = _normalize_binary_judge_label(parsed)
     except ValueError:
         repair_response = _ollama_chat(
@@ -434,9 +490,21 @@ def generate_gt(
             ollama_url=ollama_url,
         )
         repaired_text = repair_response.get("message", {}).get("content", "")
-        parsed = _extract_json_object(repaired_text)
-        binary_label = _normalize_binary_judge_label(parsed)
-        judge_text = repaired_text
+        try:
+            parsed = _extract_json_object(repaired_text)
+            binary_label = _normalize_binary_judge_label(parsed)
+            judge_text = repaired_text
+        except ValueError:
+            recovered_binary_label = _extract_binary_label_from_text(repaired_text) or _extract_binary_label_from_text(judge_text)
+            if recovered_binary_label is None:
+                raise
+            binary_label = recovered_binary_label
+            parsed = {
+                "label": "unsupported" if binary_label == 1 else "supported",
+                "binary_label": binary_label,
+                "explanation": repaired_text.strip() or judge_text.strip(),
+            }
+            judge_text = repaired_text or judge_text
     return {
         "judge_model": big_model,
         "raw_response": judge_text,
@@ -446,14 +514,18 @@ def generate_gt(
     }
 
 
-def load_jsonl_dataset(path: Path, dataset_name: str, num_rows: int) -> Dataset:
+def load_jsonl_dataset(path: Path, dataset_name: str, num_rows: int, start_idx: int = 0) -> Dataset:
     rows: List[Dict[str, Any]] = []
     with path.open("r", encoding="utf-8") as handle:
+        kept_idx = 0
         for idx, line in enumerate(handle):
             if len(rows) >= num_rows:
                 break
             stripped = line.strip()
             if not stripped:
+                continue
+            if kept_idx < start_idx:
+                kept_idx += 1
                 continue
             raw = json.loads(stripped)
             if dataset_name == "phantom":
@@ -479,6 +551,7 @@ def load_jsonl_dataset(path: Path, dataset_name: str, num_rows: int) -> Dataset:
                         "ground_truth_label": raw.get("label", raw.get("ground_truth_label")),
                     }
                 )
+            kept_idx += 1
     return Dataset.from_list(rows)
 
 
@@ -602,9 +675,34 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--top-k", type=int, default=50)
     parser.add_argument("--max-new-tokens", type=int, default=96)
     parser.add_argument("--seed-start", type=int, default=1234)
+    parser.add_argument("--start-idx", type=int, default=0)
+    parser.add_argument("--save-every", type=int, default=1)
     parser.add_argument("--ollama-url", default=DEFAULT_OLLAMA_URL)
     parser.add_argument("--local-generation", action="store_true")
     return parser
+
+
+def _partial_file_for_output(output_file: Path) -> Path:
+    return output_file.with_name(f"{output_file.stem}_partial.jsonl")
+
+
+def _load_partial_records(partial_file: Path) -> List[Dict[str, Any]]:
+    if not partial_file.exists():
+        return []
+    records: List[Dict[str, Any]] = []
+    with partial_file.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            stripped = line.strip()
+            if stripped:
+                records.append(json.loads(stripped))
+    return records
+
+
+def _append_partial_record(partial_file: Path, record: Dict[str, Any]) -> None:
+    partial_file.parent.mkdir(parents=True, exist_ok=True)
+    with partial_file.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(record, ensure_ascii=False))
+        handle.write("\n")
 
 
 def main() -> None:
@@ -619,9 +717,15 @@ def main() -> None:
         args.k,
     )
     summary_file = output_file.with_name(f"{output_file.stem}_summary.json")
+    partial_file = _partial_file_for_output(output_file)
 
     data_file = Path(args.data_file) if args.data_file else _default_data_file_for_dataset(args.dataset)
-    dataset = load_jsonl_dataset(data_file, dataset_name=args.dataset, num_rows=args.num_rows)
+    dataset = load_jsonl_dataset(
+        data_file,
+        dataset_name=args.dataset,
+        num_rows=args.num_rows,
+        start_idx=args.start_idx,
+    )
 
     evidence_model, evidence_tokenizer, _ = _load_nli_resources(device=args.device)
     self_consistency_model = _load_self_consistency_model(device=args.device)
@@ -635,8 +739,22 @@ def main() -> None:
             device=args.device,
         )
 
-    records: List[Dict[str, Any]] = []
-    for row in dataset:
+    records: List[Dict[str, Any]] = _load_partial_records(partial_file)
+    if records:
+        print(f"Loaded {len(records)} partial records from: {partial_file}")
+
+    iterable = list(dataset)
+    if records:
+        iterable = iterable[len(records):]
+
+    progress_total = len(dataset)
+    if tqdm is not None:
+        progress = tqdm(total=progress_total, initial=len(records), desc=f"{args.dataset} generation")
+    else:
+        progress = None
+        print(f"Starting {args.dataset} generation: total={progress_total}, already_completed={len(records)}")
+
+    for local_idx, row in enumerate(iterable, start=len(records)):
         if args.local_generation:
             generation = generate_k_answers_locally(
                 model_name=args.model,
@@ -746,6 +864,16 @@ def main() -> None:
             )
 
         records.append(record)
+        _append_partial_record(partial_file, record)
+
+        if progress is not None:
+            progress.update(1)
+            progress.set_postfix({"completed": len(records), "target": progress_total})
+        elif len(records) % max(args.save_every, 1) == 0:
+            print(f"Completed {len(records)}/{progress_total} examples")
+
+    if progress is not None:
+        progress.close()
 
     output_file.parent.mkdir(parents=True, exist_ok=True)
     with output_file.open("w", encoding="utf-8") as handle:
