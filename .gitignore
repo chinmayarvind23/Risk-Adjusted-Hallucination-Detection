@@ -3,3 +3,4 @@
 .hf/
 venv/
 __pycache__/
+data/full_run/
