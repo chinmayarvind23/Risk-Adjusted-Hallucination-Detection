@@ -236,12 +236,78 @@ def _plot_coverage_curves(
     plt.close(fig)
 
 
+def _build_frozen_bundle(
+    *,
+    source: str,
+    feature_columns: Sequence[str],
+    detector_coefficients: Dict[str, float],
+    detector_intercept: float,
+    platt_coef: float,
+    platt_intercept: float,
+    min_coverage: float,
+    classification_threshold: float,
+    frozen_threshold: float,
+    selection_rule: str,
+    validation_operating_point: Dict[str, float],
+    test_operating_point: Dict[str, float],
+    standardization_stats: Dict | None,
+    tuned_report_path: Path,
+    val_path: Path,
+    test_path: Path,
+) -> Dict:
+    bundle = {
+        "artifact_type": "frozen_detector_bundle",
+        "source": source,
+        "feature_columns": list(feature_columns),
+        "detector": {
+            "type": "logistic_regression",
+            "coefficients": detector_coefficients,
+            "intercept": detector_intercept,
+        },
+        "calibration": {
+            "method": "Platt scaling",
+            "fit_parameters": {
+                "coef": platt_coef,
+                "intercept": platt_intercept,
+            },
+        },
+        "abstention_policy": {
+            "selection_rule": selection_rule,
+            "minimum_coverage_constraint": min_coverage,
+            "classification_threshold_for_metrics": classification_threshold,
+            "frozen_risk_threshold": frozen_threshold,
+            "answer_when_calibrated_risk_at_or_below": frozen_threshold,
+            "abstain_when_calibrated_risk_above": frozen_threshold,
+            "selected_validation_operating_point": validation_operating_point,
+            "test_operating_point_at_frozen_threshold": test_operating_point,
+        },
+        "standardization": {
+            "required": True,
+            "feature_stats": None,
+        },
+        "provenance": {
+            "tuned_report_path": str(tuned_report_path),
+            "validation_split_path": str(val_path),
+            "test_split_path": str(test_path),
+        },
+    }
+    if standardization_stats is not None:
+        bundle["standardization"]["feature_stats"] = standardization_stats.get("stats", standardization_stats)
+        bundle["provenance"]["standardization_stats_path"] = standardization_stats.get("_loaded_from")
+    return bundle
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Calibrate a tuned detector with Platt scaling and evaluate abstention.")
     parser.add_argument("--tuned-report", required=True, help="Path to tuned logreg report JSON")
     parser.add_argument("--val", required=True, help="Standardized validation CSV")
     parser.add_argument("--test", required=True, help="Standardized test CSV")
     parser.add_argument("--output-dir", required=True, help="Directory for calibration outputs")
+    parser.add_argument(
+        "--standardization-stats",
+        default=None,
+        help="Optional JSON file with frozen feature standardization stats to embed in the saved bundle.",
+    )
     parser.add_argument("--prefix", default="phantom_4000")
     parser.add_argument(
         "--min-coverage",
@@ -258,13 +324,22 @@ def main() -> None:
     args = parser.parse_args()
 
     tuned_report = _load_json(Path(args.tuned_report))
+    tuned_report_path = Path(args.tuned_report)
+    val_path = Path(args.val)
+    test_path = Path(args.test)
     best_trial = tuned_report["best_trial"]
     coefficients = best_trial["coefficients"]
     intercept = float(best_trial["intercept"])
     feature_columns = list(coefficients.keys())
+    selection_rule = "Choose the validation risk threshold that maximizes selective accuracy subject to the minimum coverage constraint."
 
-    val_rows = _read_csv_rows(Path(args.val))
-    test_rows = _read_csv_rows(Path(args.test))
+    standardization_stats = None
+    if args.standardization_stats:
+        standardization_stats = _load_json(Path(args.standardization_stats))
+        standardization_stats["_loaded_from"] = str(Path(args.standardization_stats))
+
+    val_rows = _read_csv_rows(val_path)
+    test_rows = _read_csv_rows(test_path)
     x_val, y_val = _rows_to_xy(val_rows, feature_columns)
     x_test, y_test = _rows_to_xy(test_rows, feature_columns)
 
@@ -338,7 +413,7 @@ def main() -> None:
             "calibrated_metrics": calibrated_metrics,
         },
         "abstention": {
-            "selection_rule": "Choose the validation risk threshold that maximizes selective accuracy subject to the minimum coverage constraint.",
+            "selection_rule": selection_rule,
             "frozen_threshold": frozen_threshold,
             "selected_validation_operating_point": operating_point,
             "test_operating_point_at_frozen_threshold": selected_test_point,
@@ -352,6 +427,28 @@ def main() -> None:
     report_path = output_dir / f"{args.prefix}_calibration_abstention_report.json"
     with report_path.open("w", encoding="utf-8") as handle:
         json.dump(report, handle, indent=2, ensure_ascii=False)
+
+    frozen_bundle = _build_frozen_bundle(
+        source=report["source"],
+        feature_columns=feature_columns,
+        detector_coefficients=coefficients,
+        detector_intercept=intercept,
+        platt_coef=float(platt_model.coef_[0][0]),
+        platt_intercept=float(platt_model.intercept_[0]),
+        min_coverage=args.min_coverage,
+        classification_threshold=args.classification_threshold,
+        frozen_threshold=frozen_threshold,
+        selection_rule=selection_rule,
+        validation_operating_point=operating_point,
+        test_operating_point=selected_test_point,
+        standardization_stats=standardization_stats,
+        tuned_report_path=tuned_report_path,
+        val_path=val_path,
+        test_path=test_path,
+    )
+    bundle_path = output_dir / f"{args.prefix}_frozen_bundle.json"
+    with bundle_path.open("w", encoding="utf-8") as handle:
+        json.dump(frozen_bundle, handle, indent=2, ensure_ascii=False)
 
     _plot_reliability_diagram(
         y_val,
@@ -374,6 +471,7 @@ def main() -> None:
     )
 
     print(f"Saved calibration and abstention report to: {report_path}")
+    print(f"Saved frozen detector bundle to: {bundle_path}")
     print(
         json.dumps(
             {
@@ -388,6 +486,7 @@ def main() -> None:
                 "test_brier_before": raw_metrics["test"]["brier"],
                 "test_brier_after": calibrated_metrics["test"]["brier"],
                 "frozen_threshold": frozen_threshold,
+                "frozen_bundle_path": str(bundle_path),
                 "selected_validation_operating_point": operating_point,
                 "test_operating_point_at_frozen_threshold": selected_test_point,
             },

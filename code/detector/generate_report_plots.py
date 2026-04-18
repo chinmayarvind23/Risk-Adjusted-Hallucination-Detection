@@ -326,14 +326,6 @@ def _write_plot_guide(output_dir: Path, prefix: str) -> None:
         f"- {prefix}_roc_pr_curves.png",
         f"- {prefix}_feature_distributions.png",
         f"- {prefix}_feature_correlation.png",
-        "",
-        "## Still needed later",
-        "",
-        "After you implement calibration and abstention, add these final report plots:",
-        "",
-        "1. Reliability diagram",
-        "2. Risk-coverage curve",
-        "3. Accuracy-coverage curve",
     ]
 
     guide_path = output_dir / f"{prefix}_plot_guide.md"

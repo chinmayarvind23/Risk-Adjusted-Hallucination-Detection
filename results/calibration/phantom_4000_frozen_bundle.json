@@ -1,0 +1,76 @@
+{
+  "artifact_type": "frozen_detector_bundle",
+  "source": "phantom",
+  "feature_columns": [
+    "mean_token_nll",
+    "self_consistency_disagreement",
+    "semantic_entropy",
+    "groundedness_score"
+  ],
+  "detector": {
+    "type": "logistic_regression",
+    "coefficients": {
+      "mean_token_nll": 0.3013863399319604,
+      "self_consistency_disagreement": 0.7279614727824808,
+      "semantic_entropy": 0.20067409846673762,
+      "groundedness_score": -0.36921432876867655
+    },
+    "intercept": -0.9983114332121237
+  },
+  "calibration": {
+    "method": "Platt scaling",
+    "fit_parameters": {
+      "coef": 1.4563942491817634,
+      "intercept": 0.5817444014971648
+    }
+  },
+  "abstention_policy": {
+    "selection_rule": "Choose the validation risk threshold that maximizes selective accuracy subject to the minimum coverage constraint.",
+    "minimum_coverage_constraint": 0.8,
+    "classification_threshold_for_metrics": 0.5,
+    "frozen_risk_threshold": 0.5131736523778971,
+    "answer_when_calibrated_risk_at_or_below": 0.5131736523778971,
+    "abstain_when_calibrated_risk_above": 0.5131736523778971,
+    "selected_validation_operating_point": {
+      "threshold": 0.5131736523778971,
+      "coverage": 0.8039867109634552,
+      "abstention_rate": 0.1960132890365448,
+      "selective_risk": 0.21074380165289255,
+      "selective_accuracy": 0.7892561983471075
+    },
+    "test_operating_point_at_frozen_threshold": {
+      "threshold": 0.49861409854048155,
+      "coverage": 0.8184818481848185,
+      "abstention_rate": 0.1815181518151815,
+      "selective_risk": 0.21370967741935484,
+      "selective_accuracy": 0.7862903225806451
+    }
+  },
+  "standardization": {
+    "required": true,
+    "feature_stats": {
+      "mean_token_nll": {
+        "mean": 0.061425479854569726,
+        "std": 0.11557642336346989
+      },
+      "self_consistency_disagreement": {
+        "mean": 0.0798710011437567,
+        "std": 0.14442194299745328
+      },
+      "semantic_entropy": {
+        "mean": 0.2559887947036409,
+        "std": 0.3914430946532304
+      },
+      "groundedness_score": {
+        "mean": 0.6539255812457472,
+        "std": 0.3365775552483508
+      }
+    }
+  },
+  "provenance": {
+    "tuned_report_path": "results\\phantom_4000_logreg_tuned_report.json",
+    "validation_split_path": "data\\full_run\\splits\\phantom_4000_val_standardized.csv",
+    "test_split_path": "data\\full_run\\splits\\phantom_4000_test_standardized.csv",
+    "standardization_stats_path": "data\\full_run\\splits\\phantom_4000_standardization_stats.json"
+  }
+}

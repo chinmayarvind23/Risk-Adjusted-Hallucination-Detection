@@ -1,94 +1,113 @@
 # Calibration and Abstention Findings
 
+## Canonical artifacts
+
+This folder should use these files as the final PHANTOM calibration and abstention artifacts:
+
+- `phantom_4000_calibration_abstention_report.json`: full machine-readable results
+- `calibration_findings.md`: human-readable summary
+- `phantom_4000_reliability_diagram_val.png`
+- `phantom_4000_reliability_diagram_test.png`
+- `phantom_4000_risk_coverage_curve.png`
+- `phantom_4000_accuracy_coverage_curve.png`
+
 ## What was done
 
 After training the tuned logistic regression detector, the next step was to calibrate its risk scores and turn them into an abstention rule.
 
-The workflow was:
+The final workflow was:
 
 1. Use the tuned PHANTOM detector.
-2. Fit temperature scaling on the validation split.
-3. Convert the detector output into calibrated risk scores.
-4. Measure calibration with ECE and Brier score.
-5. Choose an abstention threshold on validation.
+2. Fit **Platt scaling** on the PHANTOM validation split.
+3. Convert detector outputs into calibrated unsupported-risk scores.
+4. Evaluate raw and calibrated scores on validation and test.
+5. Choose an abstention threshold on validation subject to the minimum coverage constraint.
 6. Freeze that threshold.
 7. Evaluate the frozen rule on test.
 
-The generated plots explain these steps.
+## Detector and calibration parameters
 
-## Simple math behind the calibration step
+### Detector coefficients
 
-The detector first produces a raw unsupported-risk score from the four features.
+- `mean_token_nll`: `0.3014`
+- `self_consistency_disagreement`: `0.7280`
+- `semantic_entropy`: `0.2007`
+- `groundedness_score`: `-0.3692`
+- intercept: `-0.9983`
 
-The raw detector logit is:
+Interpretation:
+
+- Higher token uncertainty, self-disagreement, and semantic entropy increase hallucination risk.
+- Higher groundedness lowers hallucination risk.
+- Self-consistency disagreement is the strongest positive warning signal.
+
+### Platt scaling parameters
+
+- coefficient: `1.4564`
+- intercept: `0.5817`
+
+The raw detector produces a logit:
 
 `z = b + w1*x1 + w2*x2 + w3*x3 + w4*x4`
 
-where:
-
-- `x1` is mean token NLL
-- `x2` is self-consistency disagreement
-- `x3` is semantic entropy
-- `x4` is groundedness score
-
-The raw detector probability is then:
+The raw risk score is:
 
 `p_raw = 1 / (1 + exp(-z))`
 
-This is the detector's original estimate of the probability that an answer is unsupported.
-
-Platt scaling adds one more learned logistic mapping on top of the detector output. It uses the validation split only.
-
-The calibrated probability is:
+Platt scaling then converts that score into a calibrated probability:
 
 `p_calibrated = 1 / (1 + exp(-(a*z + c)))`
 
-where:
+## Label counts
 
-- `a` is a learned scaling coefficient
-- `c` is a learned intercept
-
-In simple words, Platt scaling takes the detector score and learns how to bend it so it better matches the actual observed unsupported rate on validation data.
-
-For this PHANTOM run, the validation labels used as reality were:
+Validation labels:
 
 - supported class `0`: `203`
 - unsupported class `1`: `98`
 
-The test labels used for evaluation were:
+Test labels:
 
 - supported class `0`: `207`
 - unsupported class `1`: `96`
 
-So calibration is always trying to make predicted risk line up better with the actual judge labels.
+## Short summary tables
 
-## Simple math behind the calibration metrics
+### Raw vs calibrated metrics
 
-### ECE
+| Split | Setting | NLL | ECE | Brier | AUROC | AUPRC | Accuracy | Precision | Recall | F1 |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Validation | Raw | 0.4677 | 0.0694 | 0.1514 | 0.8331 | 0.7555 | 0.7807 | 0.8333 | 0.4082 | 0.5479 |
+| Validation | Calibrated | 0.4529 | 0.0411 | 0.1472 | 0.8331 | 0.7555 | 0.7874 | 0.7742 | 0.4898 | 0.6000 |
+| Test | Raw | 0.5207 | 0.0598 | 0.1695 | 0.7730 | 0.6451 | 0.7591 | 0.7674 | 0.3438 | 0.4748 |
+| Test | Calibrated | 0.5248 | 0.0734 | 0.1652 | 0.7730 | 0.6451 | 0.7855 | 0.7818 | 0.4479 | 0.5695 |
 
-ECE checks whether predicted risk matches observed frequency.
+### Full coverage vs selected abstention operating point
 
-The predictions are divided into bins. For each bin, we compare:
+| Split | Operating point | Coverage | Abstention rate | Selective risk | Selective accuracy |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Validation | Full coverage | 1.0000 | 0.0000 | 0.3256 | 0.6744 |
+| Validation | Selected operating point | 0.8040 | 0.1960 | 0.2107 | 0.7893 |
+| Test | Full coverage | 1.0000 | 0.0000 | 0.3168 | 0.6832 |
+| Test | Frozen-threshold test point | 0.8185 | 0.1815 | 0.2137 | 0.7863 |
 
-- average predicted risk in that bin
-- actual unsupported rate in that bin
+## How to read the calibration metrics
 
-ECE is the average mismatch across bins, weighted by how many examples fall into each bin.
+- `NLL`: lower is better. It heavily penalizes confident wrong predictions.
+- `ECE`: lower is better. It measures how close predicted probabilities are to actual outcomes.
+- `Brier`: lower is better. It measures squared probability error.
 
-Lower ECE is better.
+## How to read the classification metrics
 
-### Brier score
+These are computed using the fixed classification threshold `0.5`.
 
-Brier score is the mean squared error between predicted probability and the true label.
+- `AUROC`: ranking quality across thresholds
+- `AUPRC`: precision-recall ranking quality
+- `accuracy`: total fraction correct
+- `precision`: among predicted unsupported answers, fraction truly unsupported
+- `recall`: among truly unsupported answers, fraction detected
+- `F1`: balance between precision and recall
 
-For one example:
-
-- if the model predicts `0.9` unsupported risk and the true label is `1`, that is good
-- if the model predicts `0.9` unsupported risk and the true label is `0`, that is bad
-
-Across all examples, the Brier score averages those squared probability errors.
-
-Lower Brier score is better.
+The positive class is **unsupported / hallucinated**.
 
 ## Reliability diagram
 
@@ -99,32 +118,38 @@ Files:
 
 What this plot means:
 
-- the x-axis is the predicted hallucination risk
-- the y-axis is the actual unsupported rate
-- the diagonal line is perfect calibration
+- x-axis: predicted unsupported risk
+- y-axis: actual unsupported rate
+- diagonal line: perfect calibration
 
 How to read it:
 
-- points near the diagonal mean the predicted risk is trustworthy
+- points near the diagonal mean the risk score is well calibrated
 - points below the diagonal mean the model predicts too much risk
 - points above the diagonal mean the model predicts too little risk
 
 What happened here:
 
-- temperature scaling helped validation ECE slightly
-- validation ECE changed from `0.0694` to `0.0670`
-- validation Brier stayed almost the same, from `0.1514` to `0.1515`
-- on test, calibration became slightly worse
-- test ECE changed from `0.0598` to `0.0705`
-- test Brier changed from `0.1695` to `0.1704`
+- On validation, Platt scaling improved all three probability-quality metrics.
+- Validation ECE improved from `0.0694` to `0.0411`.
+- Validation Brier improved from `0.1514` to `0.1472`.
+- Validation NLL improved from `0.4677` to `0.4529`.
+- On test, calibration was mixed.
+- Test Brier improved from `0.1695` to `0.1652`.
+- Test ECE worsened from `0.0598` to `0.0734`.
+- Test NLL worsened from `0.5207` to `0.5248`.
 
 Interpretation:
 
-- the raw tuned detector was already fairly reasonable as a risk model
-- temperature scaling did not dramatically improve calibration
-- it gave only a small validation improvement and did not transfer cleanly to test
+- The detector was already a reasonable risk ranker before calibration.
+- Platt scaling improved in-domain probability quality on validation.
+- Out-of-sample probability calibration on test is mixed rather than uniformly better.
 
-So this plot does not show a major calibration win. It shows that calibration was attempted correctly, gave a small in-domain gain, and was somewhat brittle out of domain even within the PHANTOM split.
+## Why AUROC and AUPRC do not change
+
+Platt scaling is monotonic. It changes the score scale, but it does not meaningfully change the ranking order of examples.
+
+Because AUROC and AUPRC depend on ranking, not absolute probability values, they stay unchanged.
 
 ## Risk-coverage curve
 
@@ -134,30 +159,25 @@ File:
 
 What this plot means:
 
-- the x-axis is coverage, which is the fraction of examples we still answer
-- the y-axis is selective risk, which is the unsupported rate among only the answers we keep
+- x-axis: coverage, the fraction of examples the system still answers
+- y-axis: selective risk, the unsupported rate among the answers it keeps
 
 How to read it:
 
-- moving left means we abstain on more examples
-- if the detector is useful, risk should go down as coverage goes down
-- that means the model is correctly rejecting the riskier cases first
+- moving left means abstaining on more examples
+- if the score is useful, selective risk should fall as coverage falls
 
 What happened here:
 
-- the selected validation operating point used a frozen threshold of `0.3986`
-- on validation, coverage was `0.8040`
-- on validation, selective risk was `0.2107`
-- on test, coverage was `0.8185`
-- on test, selective risk was `0.2137`
+- the minimum coverage constraint was `0.8`
+- the frozen validation threshold was `0.5132`
+- on validation, coverage was `0.8040` and selective risk was `0.2107`
+- on test, coverage was `0.8185` and selective risk was `0.2137`
 
 Interpretation:
 
-- after abstaining on about `18 to 20%` of the riskiest examples, the remaining answered examples are much safer
-- the kept answers have only about `21%` unsupported rate
-- this means the abstention rule is doing what it is supposed to do
-
-This is one of the strongest plots because it directly shows that the risk score is useful for selective answering.
+- Abstaining on about `18 to 20%` of the riskiest examples lowers the unsupported rate of the kept answers from about `31 to 33%` down to about `21%`.
+- This is strong evidence that the calibrated risk score is useful for selective rejection.
 
 ## Accuracy-coverage curve
 
@@ -167,69 +187,60 @@ File:
 
 What this plot means:
 
-- the x-axis is coverage
-- the y-axis is selective accuracy, which is the accuracy on only the examples we keep
+- x-axis: coverage
+- y-axis: selective accuracy, meaning accuracy on only the examples the system keeps
 
 How to read it:
 
-- moving left means we answer fewer examples
-- if abstention helps, the accuracy of the kept examples should increase
+- moving left means the system answers fewer examples
+- if abstention helps, selective accuracy should rise as the riskiest examples are removed
 
 What happened here:
 
-- at the selected validation threshold, validation selective accuracy was `0.7893`
-- at the frozen threshold on test, selective accuracy was `0.7863`
+- at full coverage, validation selective accuracy was `0.6744`
+- at the selected validation operating point, validation selective accuracy rose to `0.7893`
+- at full coverage, test selective accuracy was `0.6832`
+- at the frozen-threshold test point, test selective accuracy rose to `0.7863`
 
 Interpretation:
 
-- once the riskiest examples are removed, the accuracy of the remaining answers becomes noticeably higher
-- this is the positive of the risk-coverage result
-
-Together, the risk-coverage and accuracy-coverage plots show that abstention improves the quality of the answers that are still returned.
+- Once the riskiest cases are removed, the remaining answered set becomes much more reliable.
+- This is the positive side of the risk-coverage result.
 
 ## Selected operating point
 
-What this means:
+Selection rule:
 
-- the operating point is the single abstention threshold chosen on validation
-- after that, it is frozen and reused on test
+> Choose the validation risk threshold that maximizes selective accuracy subject to the minimum coverage constraint.
 
-Why this matters:
+Chosen validation operating point:
 
-- this avoids tuning on the test set
-- it makes the abstention evaluation fair
-- it gives a concrete rule that can later be transferred to WikiQA
+- threshold: `0.5132`
+- coverage: `0.8040`
+- abstention rate: `0.1960`
+- selective risk: `0.2107`
+- selective accuracy: `0.7893`
 
-The frozen rule here is:
+Frozen-threshold test operating point:
 
-- if calibrated risk is greater than `0.3986`, abstain
-- otherwise, answer
+- reported threshold on test curve: `0.4986`
+- coverage: `0.8185`
+- abstention rate: `0.1815`
+- selective risk: `0.2137`
+- selective accuracy: `0.7863`
 
-This is the rule that should be carried into the transfer setting when PHANTOM is the source regime.
+The slight threshold mismatch between validation and test is due to the test curve being evaluated on the discrete set of test score values. The decision policy is still the frozen validation rule.
 
-## Does this prove the point
+## Main conclusion
 
-It supports part of the point clearly, and part of it only weakly.
+This result supports three points:
 
-What it supports clearly:
+1. The tuned PHANTOM detector learns sensible risk signals.
+2. Platt scaling is a reasonable final calibration choice.
+   It improves validation calibration clearly and improves several threshold-based decision metrics on test, even though test probability calibration is mixed.
+3. The abstention rule works well.
+   Abstaining on roughly the riskiest `20%` of cases raises the quality of the kept answers substantially while preserving about `80%` coverage.
 
-1. The detector scores are useful for ranking risky answers.
-2. An abstention rule built from those scores improves the quality of kept answers.
-3. The selected threshold transfers from validation to test in a stable way inside PHANTOM.
+In short:
 
-What it supports only weakly:
-
-1. Temperature scaling did not give a strong calibration improvement.
-2. Calibration quality did not improve on test.
-3. So the main strength right now is selective abstention, not strong probability calibration.
-
-So the claim is:
-
-- the PHANTOM detector supports the risk-adjusted abstention point well
-- the calibration story is mixed rather than strong
-
-That is still a valid result. It means the model is useful for deciding when to abstain, even if its probability values are not perfectly calibrated.
-
-## Simple conclusion
-
-The new plots show that the detector can identify higher-risk answers and abstain on them effectively. This improves the safety of the answers that are kept. The abstention story is strong. The calibration story is more modest, because temperature scaling only helped slightly on validation and did not improve test calibration. So the current PHANTOM result supports the usefulness of the risk score for abstention more strongly than it supports perfectly calibrated risk probabilities.
+> The calibrated PHANTOM risk score is useful for rejecting risky examples. By abstaining on about one fifth of cases, the system keeps a much cleaner set of answers.
