@@ -16,6 +16,80 @@ The workflow was:
 
 The generated plots explain these steps.
 
+## Simple math behind the calibration step
+
+The detector first produces a raw unsupported-risk score from the four features.
+
+The raw detector logit is:
+
+`z = b + w1*x1 + w2*x2 + w3*x3 + w4*x4`
+
+where:
+
+- `x1` is mean token NLL
+- `x2` is self-consistency disagreement
+- `x3` is semantic entropy
+- `x4` is groundedness score
+
+The raw detector probability is then:
+
+`p_raw = 1 / (1 + exp(-z))`
+
+This is the detector's original estimate of the probability that an answer is unsupported.
+
+Platt scaling adds one more learned logistic mapping on top of the detector output. It uses the validation split only.
+
+The calibrated probability is:
+
+`p_calibrated = 1 / (1 + exp(-(a*z + c)))`
+
+where:
+
+- `a` is a learned scaling coefficient
+- `c` is a learned intercept
+
+In simple words, Platt scaling takes the detector score and learns how to bend it so it better matches the actual observed unsupported rate on validation data.
+
+For this PHANTOM run, the validation labels used as reality were:
+
+- supported class `0`: `203`
+- unsupported class `1`: `98`
+
+The test labels used for evaluation were:
+
+- supported class `0`: `207`
+- unsupported class `1`: `96`
+
+So calibration is always trying to make predicted risk line up better with the actual judge labels.
+
+## Simple math behind the calibration metrics
+
+### ECE
+
+ECE checks whether predicted risk matches observed frequency.
+
+The predictions are divided into bins. For each bin, we compare:
+
+- average predicted risk in that bin
+- actual unsupported rate in that bin
+
+ECE is the average mismatch across bins, weighted by how many examples fall into each bin.
+
+Lower ECE is better.
+
+### Brier score
+
+Brier score is the mean squared error between predicted probability and the true label.
+
+For one example:
+
+- if the model predicts `0.9` unsupported risk and the true label is `1`, that is good
+- if the model predicts `0.9` unsupported risk and the true label is `0`, that is bad
+
+Across all examples, the Brier score averages those squared probability errors.
+
+Lower Brier score is better.
+
 ## Reliability diagram
 
 Files:

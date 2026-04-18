@@ -8,6 +8,7 @@ from typing import Dict, List, Sequence, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     accuracy_score,
     average_precision_score,
@@ -91,30 +92,10 @@ def _expected_calibration_error(y_true: np.ndarray, probs: np.ndarray, n_bins: i
     return float(ece)
 
 
-def _fit_temperature(val_logits: np.ndarray, y_val: np.ndarray) -> Dict[str, float]:
-    coarse_grid = np.exp(np.linspace(np.log(0.05), np.log(10.0), 600))
-    coarse_losses = []
-    for temp in coarse_grid:
-        probs = _sigmoid(val_logits / temp)
-        coarse_losses.append(_nll(y_val, probs))
-    best_idx = int(np.argmin(coarse_losses))
-    best_temp = float(coarse_grid[best_idx])
-
-    lower = max(0.01, best_temp / 2.0)
-    upper = best_temp * 2.0
-    fine_grid = np.exp(np.linspace(np.log(lower), np.log(upper), 600))
-    fine_losses = []
-    for temp in fine_grid:
-        probs = _sigmoid(val_logits / temp)
-        fine_losses.append(_nll(y_val, probs))
-    fine_best_idx = int(np.argmin(fine_losses))
-    fine_best_temp = float(fine_grid[fine_best_idx])
-    fine_best_loss = float(fine_losses[fine_best_idx])
-
-    return {
-        "temperature": fine_best_temp,
-        "validation_nll_after_temperature_scaling": fine_best_loss,
-    }
+def _fit_platt_scaling(val_logits: np.ndarray, y_val: np.ndarray) -> LogisticRegression:
+    model = LogisticRegression(solver="lbfgs", random_state=42, max_iter=2000)
+    model.fit(val_logits.reshape(-1, 1), y_val)
+    return model
 
 
 def _build_curve_from_risk(y_true: np.ndarray, risk_scores: np.ndarray) -> List[Dict[str, float]]:
@@ -256,7 +237,7 @@ def _plot_coverage_curves(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Calibrate a tuned detector with temperature scaling and evaluate abstention.")
+    parser = argparse.ArgumentParser(description="Calibrate a tuned detector with Platt scaling and evaluate abstention.")
     parser.add_argument("--tuned-report", required=True, help="Path to tuned logreg report JSON")
     parser.add_argument("--val", required=True, help="Standardized validation CSV")
     parser.add_argument("--test", required=True, help="Standardized test CSV")
@@ -294,11 +275,9 @@ def main() -> None:
     raw_val_probs = _sigmoid(val_logits)
     raw_test_probs = _sigmoid(test_logits)
 
-    temperature_fit = _fit_temperature(val_logits, y_val)
-    temperature = float(temperature_fit["temperature"])
-
-    calibrated_val_probs = _sigmoid(val_logits / temperature)
-    calibrated_test_probs = _sigmoid(test_logits / temperature)
+    platt_model = _fit_platt_scaling(val_logits, y_val)
+    calibrated_val_probs = platt_model.predict_proba(val_logits.reshape(-1, 1))[:, 1]
+    calibrated_test_probs = platt_model.predict_proba(test_logits.reshape(-1, 1))[:, 1]
 
     raw_metrics = {
         "val": {
@@ -349,8 +328,12 @@ def main() -> None:
             "coefficients": coefficients,
             "intercept": intercept,
         },
-        "temperature_scaling": {
-            **temperature_fit,
+        "platt_scaling": {
+            "method": "Platt scaling",
+            "fit_parameters": {
+                "coef": float(platt_model.coef_[0][0]),
+                "intercept": float(platt_model.intercept_[0]),
+            },
             "raw_metrics": raw_metrics,
             "calibrated_metrics": calibrated_metrics,
         },
@@ -394,7 +377,8 @@ def main() -> None:
     print(
         json.dumps(
             {
-                "temperature": temperature,
+                "platt_scaling_coef": float(platt_model.coef_[0][0]),
+                "platt_scaling_intercept": float(platt_model.intercept_[0]),
                 "validation_ece_before": raw_metrics["val"]["ece"],
                 "validation_ece_after": calibrated_metrics["val"]["ece"],
                 "validation_brier_before": raw_metrics["val"]["brier"],
