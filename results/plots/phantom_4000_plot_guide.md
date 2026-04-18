@@ -11,11 +11,6 @@
 1. Baseline heatmap
 2. Feature distributions by label
 3. Feature correlation heatmap
-
-## Still needed later
-
-After implementing calibration and abstention, these need to be generated:
-
-1. Reliability diagram
-2. Risk-coverage curve
-3. Accuracy-coverage curve
+4. 1. Reliability diagram
+   2. 2. Risk-coverage curve
+      3. Accuracy-coverage curve
