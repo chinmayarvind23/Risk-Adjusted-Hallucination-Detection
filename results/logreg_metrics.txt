@@ -1,0 +1,80 @@
+(venv) PS C:\Users\chinm\Documents\coursework\5541\project\Risk-Adjusted-Hallucination-Detection\code> python detector/train_logreg_detector.py --train ..\data\full_run\splits\phantom_4000_train_standardized.csv --val ..\data\full_run\splits\phantom_4000_val_standardized.csv --test ..\data\full_run\splits\phantom_4000_test_standardized.csv --output-dir ..\data\full_run\detector --prefix phantom_4000
+Saved detector report to: ..\data\full_run\detector\phantom_4000_logreg_report.json
+{
+  "hyperparameters": {
+    "C": 1.0,
+    "max_iter": 1000,
+    "solver": "liblinear"
+  },
+  "intercept": -0.9983114332121237,
+  "coefficients": {
+    "mean_token_nll": 0.3013863399319604,
+    "self_consistency_disagreement": 0.7279614727824808,
+    "semantic_entropy": 0.20067409846673762,
+    "groundedness_score": -0.36921432876867655
+  },
+  "train_metrics": {
+    "auroc": 0.7929386789680908,
+    "auprc": 0.6117094314724607,
+    "accuracy": 0.7650816181689141,
+    "precision": 0.6807511737089202,
+    "recall": 0.3553921568627451,
+    "f1": 0.4669887278582931,
+    "positive_rate_at_threshold": 0.15117104329311568
+  },
+  "val_metrics": {
+    "auroc": 0.833115512214738,
+    "auprc": 0.7554614716473252,
+    "accuracy": 0.7807308970099668,
+    "precision": 0.8333333333333334,
+    "recall": 0.40816326530612246,
+    "f1": 0.547945205479452,
+    "positive_rate_at_threshold": 0.15946843853820597
+  },
+  "test_metrics": {
+    "auroc": 0.7729971819645732,
+    "auprc": 0.6450967812971509,
+    "accuracy": 0.759075907590759,
+    "precision": 0.7674418604651163,
+    "recall": 0.34375,
+    "f1": 0.4748201438848921,
+    "positive_rate_at_threshold": 0.1419141914191419
+  }
+}
+{
+  "manual_weighted_ablation": {
+    "weights": {
+      "mean_token_nll": 0.1,
+      "self_consistency_disagreement": 0.2,
+      "semantic_entropy": 0.3,
+      "groundedness_score": -0.4
+    },
+    "train_metrics": {
+      "auroc": 0.7506231513584455,
+      "auprc": 0.5599083069730673,
+      "accuracy": 0.6713981547196594,
+      "precision": 0.45614035087719296,
+      "recall": 0.7009803921568627,
+      "f1": 0.5526570048309178,
+      "positive_rate_at_threshold": 0.44499645138396027
+    },
+    "val_metrics": {
+      "auroc": 0.8180355886196844,
+      "auprc": 0.731371667762525,
+      "accuracy": 0.6976744186046512,
+      "precision": 0.5228758169934641,
+      "recall": 0.8163265306122449,
+      "f1": 0.6374501992031872,
+      "positive_rate_at_threshold": 0.5083056478405316
+    },
+    "test_metrics": {
+      "auroc": 0.7152274557165861,
+      "auprc": 0.5450485536616952,
+      "accuracy": 0.6402640264026402,
+      "precision": 0.45112781954887216,
+      "recall": 0.625,
+      "f1": 0.5240174672489083,
+      "positive_rate_at_threshold": 0.4389438943894389
+    }
+  }
+}
