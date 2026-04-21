@@ -1,0 +1,366 @@
+{
+  "feature_distribution_shift": {
+    "phantom": {
+      "dataset": "PHANTOM",
+      "rows": 2013,
+      "unsupported_rate": 0.29905613512170887,
+      "overall": {
+        "mean_token_nll": {
+          "mean": 0.061942487578662206,
+          "std": 0.11631653230908802
+        },
+        "self_consistency_disagreement": {
+          "mean": 0.07930936356770477,
+          "std": 0.14358868439095449
+        },
+        "semantic_entropy": {
+          "mean": 0.26473962164745873,
+          "std": 0.39887515654952466
+        },
+        "groundedness_score": {
+          "mean": 0.6535095714443838,
+          "std": 0.33920148587899135
+        }
+      },
+      "by_label": {
+        "0": {
+          "mean_token_nll": {
+            "mean": 0.03598562427477589,
+            "std": 0.06854791776454604
+          },
+          "self_consistency_disagreement": {
+            "mean": 0.03939286932549856,
+            "std": 0.09218706881617168
+          },
+          "semantic_entropy": {
+            "mean": 0.18515214799792673,
+            "std": 0.34262837407990904
+          },
+          "groundedness_score": {
+            "mean": 0.6869487779324168,
+            "std": 0.33095167515268187
+          }
+        },
+        "1": {
+          "mean_token_nll": {
+            "mean": 0.12278158080421638,
+            "std": 0.17023611010732487
+          },
+          "self_consistency_disagreement": {
+            "mean": 0.17286779110217806,
+            "std": 0.19124956007604096
+          },
+          "semantic_entropy": {
+            "mean": 0.4512810258326575,
+            "std": 0.4555088047987762
+          },
+          "groundedness_score": {
+            "mean": 0.5751329595596423,
+            "std": 0.34560301400771143
+          }
+        }
+      },
+      "unsupported_minus_supported": {
+        "mean_token_nll": 0.08679595652944049,
+        "self_consistency_disagreement": 0.1334749217766795,
+        "semantic_entropy": 0.26612887783473077,
+        "groundedness_score": -0.11181581837277454
+      }
+    },
+    "wikiqa": {
+      "dataset": "WikiQA",
+      "rows": 1300,
+      "unsupported_rate": 0.2076923076923077,
+      "overall": {
+        "mean_token_nll": {
+          "mean": 0.044269781171562585,
+          "std": 0.050928130557075985
+        },
+        "self_consistency_disagreement": {
+          "mean": 0.034888558983802775,
+          "std": 0.09825910288443958
+        },
+        "semantic_entropy": {
+          "mean": 0.2303646357709187,
+          "std": 0.37062688484275624
+        },
+        "groundedness_score": {
+          "mean": 0.8273417239857246,
+          "std": 0.2778746215321745
+        }
+      },
+      "by_label": {
+        "0": {
+          "mean_token_nll": {
+            "mean": 0.04814372134983631,
+            "std": 0.051202502532018586
+          },
+          "self_consistency_disagreement": {
+            "mean": 0.03574616243538345,
+            "std": 0.09013527030039299
+          },
+          "semantic_entropy": {
+            "mean": 0.25150942948313176,
+            "std": 0.3778002249886954
+          },
+          "groundedness_score": {
+            "mean": 0.8421731567994566,
+            "std": 0.25084476673009
+          }
+        },
+        "1": {
+          "mean_token_nll": {
+            "mean": 0.029491416787777648,
+            "std": 0.047111038868674675
+          },
+          "self_consistency_disagreement": {
+            "mean": 0.031616960631476496,
+            "std": 0.12462629327296929
+          },
+          "semantic_entropy": {
+            "mean": 0.14970116346136494,
+            "std": 0.3302958361499093
+          },
+          "groundedness_score": {
+            "mean": 0.7707625543629681,
+            "std": 0.3579299248477464
+          }
+        }
+      },
+      "unsupported_minus_supported": {
+        "mean_token_nll": -0.018652304562058665,
+        "self_consistency_disagreement": -0.004129201803906954,
+        "semantic_entropy": -0.10180826602176682,
+        "groundedness_score": -0.07141060243648845
+      }
+    },
+    "direction_comparison": {
+      "mean_token_nll": {
+        "source_delta": 0.08679595652944049,
+        "target_delta": -0.018652304562058665,
+        "same_direction": false,
+        "direction_flip": true
+      },
+      "self_consistency_disagreement": {
+        "source_delta": 0.1334749217766795,
+        "target_delta": -0.004129201803906954,
+        "same_direction": false,
+        "direction_flip": true
+      },
+      "semantic_entropy": {
+        "source_delta": 0.26612887783473077,
+        "target_delta": -0.10180826602176682,
+        "same_direction": false,
+        "direction_flip": true
+      },
+      "groundedness_score": {
+        "source_delta": -0.11181581837277454,
+        "target_delta": -0.07141060243648845,
+        "same_direction": true,
+        "direction_flip": false
+      }
+    }
+  },
+  "standalone_runs": {
+    "phantom": {
+      "dataset": "PHANTOM",
+      "detector_threshold": 0.2691080336410126,
+      "detector_test_metrics": {
+        "auroc": 0.7729971819645732,
+        "auprc": 0.6450967812971509,
+        "accuracy": 0.759075907590759,
+        "precision": 0.6095238095238096,
+        "recall": 0.6666666666666666,
+        "f1": 0.6368159203980099,
+        "positive_rate_at_threshold": 0.3465346534653465
+      },
+      "calibration_method": "Platt scaling",
+      "calibrated_test_metrics": {
+        "nll": 0.5247509297325935,
+        "ece": 0.07343065161080854,
+        "brier": 0.16521549690300666,
+        "classification_metrics": {
+          "auroc": 0.7729971819645732,
+          "auprc": 0.6450967812971509,
+          "accuracy": 0.7854785478547854,
+          "precision": 0.7818181818181819,
+          "recall": 0.4479166666666667,
+          "f1": 0.5695364238410596,
+          "positive_rate_at_threshold": 0.18151815181518152
+        }
+      },
+      "full_coverage_accuracy_from_abstention_curve": 0.6831683168316831,
+      "frozen_threshold_test_operating_point": {
+        "threshold": 0.49861409854048155,
+        "coverage": 0.8184818481848185,
+        "abstention_rate": 0.1815181518151815,
+        "selective_risk": 0.21370967741935484,
+        "selective_accuracy": 0.7862903225806451
+      },
+      "abstention_accuracy_gain": 0.10312200574896202
+    },
+    "wikiqa": {
+      "dataset": "WikiQA",
+      "detector_threshold": 0.2244614478200118,
+      "detector_test_metrics": {
+        "auroc": 0.6927031272311867,
+        "auprc": 0.3433995001509075,
+        "accuracy": 0.6836734693877551,
+        "precision": 0.40963855421686746,
+        "recall": 0.723404255319149,
+        "f1": 0.5230769230769231,
+        "positive_rate_at_threshold": 0.42346938775510207
+      },
+      "calibration_method": "Isotonic regression",
+      "calibrated_test_metrics": {
+        "nll": 0.4966323801650228,
+        "ece": 0.07249835710857908,
+        "brier": 0.16561211517335847,
+        "classification_metrics": {
+          "auroc": 0.714408110809653,
+          "auprc": 0.3768297193599345,
+          "accuracy": 0.7602040816326531,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "positive_rate_at_threshold": 0.0
+        }
+      },
+      "full_coverage_accuracy_from_abstention_curve": 0.7602040816326531,
+      "frozen_threshold_test_operating_point": {
+        "threshold": 0.3108108108108108,
+        "coverage": 0.9642857142857143,
+        "abstention_rate": 0.0357142857142857,
+        "selective_risk": 0.24338624338624337,
+        "selective_accuracy": 0.7566137566137566
+      },
+      "abstention_accuracy_gain": -0.0035903250188964453
+    }
+  },
+  "transfer_runs": {
+    "phantom_to_wikiqa": {
+      "source_name": "phantom",
+      "target_name": "wikiqa",
+      "raw_test_metrics": {
+        "nll": 0.5698433018128707,
+        "ece": 0.11146270493629654,
+        "brier": 0.18382934003706994,
+        "classification_metrics": {
+          "auroc": 0.39960445882775986,
+          "auprc": 0.20196266383852915,
+          "accuracy": 0.7684615384615384,
+          "precision": 0.22807017543859648,
+          "recall": 0.04814814814814815,
+          "f1": 0.07951070336391437,
+          "positive_rate_at_threshold": 0.04384615384615385
+        }
+      },
+      "calibrated_test_metrics": {
+        "nll": 0.6267446139765123,
+        "ece": 0.15611908712114836,
+        "brier": 0.19851719501515824,
+        "classification_metrics": {
+          "auroc": 0.39960445882775986,
+          "auprc": 0.20196266383852915,
+          "accuracy": 0.7553846153846154,
+          "precision": 0.27358490566037735,
+          "recall": 0.10740740740740741,
+          "f1": 0.15425531914893617,
+          "positive_rate_at_threshold": 0.08153846153846153
+        }
+      },
+      "frozen_target_operating_point": {
+        "threshold": 0.5150791554479256,
+        "coverage": 0.9238461538461539,
+        "abstention_rate": 0.07615384615384613,
+        "selective_risk": 0.20399666944213155,
+        "selective_accuracy": 0.7960033305578684
+      },
+      "raw_to_calibrated_metric_change": {
+        "auroc": 0.0,
+        "ece": 0.04465638218485182,
+        "brier": 0.014687854978088305,
+        "f1": 0.0747446157850218
+      },
+      "unsupported_examples": 270,
+      "supported_examples": 1030,
+      "unsupported_kept_below_frozen_threshold": 244,
+      "unsupported_kept_rate_within_unsupported": 0.9037037037037037,
+      "confident_wrong_feature_means": {
+        "mean_token_nll": -0.3527210028273826,
+        "self_consistency_disagreement": -0.4946639846918512,
+        "semantic_entropy": -0.4232361784265909,
+        "groundedness_score": 0.48575582714538235
+      }
+    },
+    "wikiqa_to_phantom": {
+      "source_name": "wikiqa",
+      "target_name": "phantom",
+      "raw_test_metrics": {
+        "nll": 0.7242509650364168,
+        "ece": 0.10935259339500202,
+        "brier": 0.23044914136036346,
+        "classification_metrics": {
+          "auroc": 0.4470763648692876,
+          "auprc": 0.31475691952005247,
+          "accuracy": 0.7034277198211625,
+          "precision": 0.6470588235294118,
+          "recall": 0.018272425249169437,
+          "f1": 0.035541195476575124,
+          "positive_rate_at_threshold": 0.008445106805762544
+        }
+      },
+      "calibrated_test_metrics": {
+        "nll": 1.8943553318378408,
+        "ece": 0.16591946995672652,
+        "brier": 0.24947889506942467,
+        "classification_metrics": {
+          "auroc": 0.42936020023027416,
+          "auprc": 0.2942649627137524,
+          "accuracy": 0.7049180327868853,
+          "precision": 0.6,
+          "recall": 0.03986710963455149,
+          "f1": 0.07476635514018691,
+          "positive_rate_at_threshold": 0.01987083954297069
+        }
+      },
+      "frozen_target_operating_point": {
+        "threshold": 0.3108108108108108,
+        "coverage": 0.8509687034277198,
+        "abstention_rate": 0.1490312965722802,
+        "selective_risk": 0.29188558085230587,
+        "selective_accuracy": 0.7081144191476941
+      },
+      "raw_to_calibrated_metric_change": {
+        "auroc": -0.017716164639013432,
+        "ece": 0.0565668765617245,
+        "brier": 0.01902975370906121,
+        "f1": 0.039225159663611786
+      },
+      "unsupported_examples": 602,
+      "supported_examples": 1411,
+      "unsupported_kept_below_frozen_threshold": 500,
+      "unsupported_kept_rate_within_unsupported": 0.8305647840531561,
+      "confident_wrong_feature_means": {
+        "mean_token_nll": 1.961659975948694,
+        "self_consistency_disagreement": 1.2634662020358156,
+        "semantic_entropy": 0.7737726117517509,
+        "groundedness_score": -0.6209512963755391
+      }
+    }
+  },
+  "coefficient_comparison": {
+    "phantom": {
+      "mean_token_nll": 0.3013863399319604,
+      "self_consistency_disagreement": 0.7279614727824808,
+      "semantic_entropy": 0.20067409846673762,
+      "groundedness_score": -0.36921432876867655
+    },
+    "wikiqa": {
+      "mean_token_nll": -0.3388288259997837,
+      "self_consistency_disagreement": 0.16399777604599086,
+      "semantic_entropy": -0.05613460548823587,
+      "groundedness_score": -0.26474179114562596
+    }
+  }
+}

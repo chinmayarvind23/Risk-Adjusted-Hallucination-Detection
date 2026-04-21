@@ -1,0 +1,1064 @@
+{
+  "experiment_type": "frozen_bundle_transfer_evaluation",
+  "source_name": "wikiqa",
+  "target_name": "phantom",
+  "bundle_path": "results\\wikiqa\\calibration\\wikiqa_1300_frozen_bundle.json",
+  "test_path": "data\\full_run\\qwen3_8b_k5_phantom_4000_feature_table_deduped_standardized.csv",
+  "feature_columns": [
+    "mean_token_nll",
+    "self_consistency_disagreement",
+    "semantic_entropy",
+    "groundedness_score"
+  ],
+  "classification_threshold_for_metrics": 0.5,
+  "frozen_risk_threshold": 0.3108108108108108,
+  "raw_metrics": {
+    "nll": 0.7242509650364168,
+    "ece": 0.10935259339500202,
+    "brier": 0.23044914136036346,
+    "classification_metrics": {
+      "auroc": 0.4470763648692876,
+      "auprc": 0.31475691952005247,
+      "accuracy": 0.7034277198211625,
+      "precision": 0.6470588235294118,
+      "recall": 0.018272425249169437,
+      "f1": 0.035541195476575124,
+      "positive_rate_at_threshold": 0.008445106805762544
+    }
+  },
+  "calibrated_metrics": {
+    "nll": 1.8943553318378408,
+    "ece": 0.16591946995672652,
+    "brier": 0.24947889506942467,
+    "classification_metrics": {
+      "auroc": 0.42936020023027416,
+      "auprc": 0.2942649627137524,
+      "accuracy": 0.7049180327868853,
+      "precision": 0.6,
+      "recall": 0.03986710963455149,
+      "f1": 0.07476635514018691,
+      "positive_rate_at_threshold": 0.01987083954297069
+    }
+  },
+  "transfer_abstention": {
+    "selection_rule": "Choose the validation risk threshold that maximizes selective accuracy subject to the minimum coverage constraint.",
+    "frozen_source_threshold": 0.3108108108108108,
+    "target_operating_point_at_frozen_threshold": {
+      "threshold": 0.3108108108108108,
+      "coverage": 0.8509687034277198,
+      "abstention_rate": 0.1490312965722802,
+      "selective_risk": 0.29188558085230587,
+      "selective_accuracy": 0.7081144191476941
+    },
+    "target_curve": [
+      {
+        "threshold": 0.0,
+        "coverage": 0.05663189269746647,
+        "abstention_rate": 0.9433681073025335,
+        "selective_risk": 0.7543859649122807,
+        "selective_accuracy": 0.24561403508771928
+      },
+      {
+        "threshold": 0.0,
+        "coverage": 0.05663189269746647,
+        "abstention_rate": 0.9433681073025335,
+        "selective_risk": 0.7543859649122807,
+        "selective_accuracy": 0.24561403508771928
+      },
+      {
+        "threshold": 0.00010180827178521974,
+        "coverage": 0.057128663686040734,
+        "abstention_rate": 0.9428713363139593,
+        "selective_risk": 0.7565217391304347,
+        "selective_accuracy": 0.24347826086956526
+      },
+      {
+        "threshold": 0.0007601517006496827,
+        "coverage": 0.057625434674615006,
+        "abstention_rate": 0.942374565325385,
+        "selective_risk": 0.7586206896551724,
+        "selective_accuracy": 0.24137931034482762
+      },
+      {
+        "threshold": 0.0015099921886923102,
+        "coverage": 0.05812220566318927,
+        "abstention_rate": 0.9418777943368107,
+        "selective_risk": 0.7606837606837606,
+        "selective_accuracy": 0.23931623931623935
+      },
+      {
+        "threshold": 0.005183277086680072,
+        "coverage": 0.058618976651763535,
+        "abstention_rate": 0.9413810233482365,
+        "selective_risk": 0.7627118644067796,
+        "selective_accuracy": 0.23728813559322037
+      },
+      {
+        "threshold": 0.007105412438866033,
+        "coverage": 0.05911574764033781,
+        "abstention_rate": 0.9408842523596622,
+        "selective_risk": 0.7563025210084033,
+        "selective_accuracy": 0.24369747899159666
+      },
+      {
+        "threshold": 0.008385898020785536,
+        "coverage": 0.05961251862891207,
+        "abstention_rate": 0.940387481371088,
+        "selective_risk": 0.75,
+        "selective_accuracy": 0.25
+      },
+      {
+        "threshold": 0.008942543894116478,
+        "coverage": 0.060109289617486336,
+        "abstention_rate": 0.9398907103825137,
+        "selective_risk": 0.7520661157024794,
+        "selective_accuracy": 0.2479338842975206
+      },
+      {
+        "threshold": 0.009350436797666119,
+        "coverage": 0.06060606060606061,
+        "abstention_rate": 0.9393939393939394,
+        "selective_risk": 0.7459016393442623,
+        "selective_accuracy": 0.25409836065573765
+      },
+      {
+        "threshold": 0.011610467280812683,
+        "coverage": 0.06110283159463487,
+        "abstention_rate": 0.9388971684053651,
+        "selective_risk": 0.7479674796747967,
+        "selective_accuracy": 0.2520325203252033
+      },
+      {
+        "threshold": 0.013510997266771586,
+        "coverage": 0.061599602583209144,
+        "abstention_rate": 0.9384003974167908,
+        "selective_risk": 0.7419354838709677,
+        "selective_accuracy": 0.25806451612903225
+      },
+      {
+        "threshold": 0.017337912723022052,
+        "coverage": 0.06209637357178341,
+        "abstention_rate": 0.9379036264282166,
+        "selective_risk": 0.744,
+        "selective_accuracy": 0.256
+      },
+      {
+        "threshold": 0.02002655854189474,
+        "coverage": 0.06259314456035768,
+        "abstention_rate": 0.9374068554396423,
+        "selective_risk": 0.746031746031746,
+        "selective_accuracy": 0.25396825396825395
+      },
+      {
+        "threshold": 0.020764058943179415,
+        "coverage": 0.06308991554893194,
+        "abstention_rate": 0.936910084451068,
+        "selective_risk": 0.7401574803149606,
+        "selective_accuracy": 0.25984251968503935
+      },
+      {
+        "threshold": 0.022222222222222223,
+        "coverage": 0.20119225037257824,
+        "abstention_rate": 0.7988077496274217,
+        "selective_risk": 0.4765432098765432,
+        "selective_accuracy": 0.5234567901234568
+      },
+      {
+        "threshold": 0.03229456614588082,
+        "coverage": 0.20168902136115252,
+        "abstention_rate": 0.7983109786388475,
+        "selective_risk": 0.4753694581280788,
+        "selective_accuracy": 0.5246305418719213
+      },
+      {
+        "threshold": 0.09204997613269932,
+        "coverage": 0.20218579234972678,
+        "abstention_rate": 0.7978142076502732,
+        "selective_risk": 0.4742014742014742,
+        "selective_accuracy": 0.5257985257985258
+      },
+      {
+        "threshold": 0.12797687766445529,
+        "coverage": 0.20268256333830104,
+        "abstention_rate": 0.797317436661699,
+        "selective_risk": 0.4730392156862745,
+        "selective_accuracy": 0.5269607843137255
+      },
+      {
+        "threshold": 0.14285714285714285,
+        "coverage": 0.2637853949329359,
+        "abstention_rate": 0.7362146050670642,
+        "selective_risk": 0.4218455743879473,
+        "selective_accuracy": 0.5781544256120528
+      },
+      {
+        "threshold": 0.14812488758149753,
+        "coverage": 0.26428216592151016,
+        "abstention_rate": 0.7357178340784898,
+        "selective_risk": 0.42293233082706766,
+        "selective_accuracy": 0.5770676691729324
+      },
+      {
+        "threshold": 0.15476411935207013,
+        "coverage": 0.2647789369100845,
+        "abstention_rate": 0.7352210630899155,
+        "selective_risk": 0.42213883677298314,
+        "selective_accuracy": 0.5778611632270169
+      },
+      {
+        "threshold": 0.15872616430637473,
+        "coverage": 0.26527570789865873,
+        "abstention_rate": 0.7347242921013413,
+        "selective_risk": 0.42134831460674155,
+        "selective_accuracy": 0.5786516853932584
+      },
+      {
+        "threshold": 0.16259705827187637,
+        "coverage": 0.265772478887233,
+        "abstention_rate": 0.734227521112767,
+        "selective_risk": 0.4205607476635514,
+        "selective_accuracy": 0.5794392523364487
+      },
+      {
+        "threshold": 0.16666666666666666,
+        "coverage": 0.38450074515648286,
+        "abstention_rate": 0.6154992548435172,
+        "selective_risk": 0.3669250645994832,
+        "selective_accuracy": 0.6330749354005167
+      },
+      {
+        "threshold": 0.17404563846425394,
+        "coverage": 0.3849975161450571,
+        "abstention_rate": 0.6150024838549428,
+        "selective_risk": 0.3664516129032258,
+        "selective_accuracy": 0.6335483870967742
+      },
+      {
+        "threshold": 0.17574201571198564,
+        "coverage": 0.3854942871336314,
+        "abstention_rate": 0.6145057128663687,
+        "selective_risk": 0.36597938144329895,
+        "selective_accuracy": 0.634020618556701
+      },
+      {
+        "threshold": 0.1785719589069356,
+        "coverage": 0.3859910581222057,
+        "abstention_rate": 0.6140089418777943,
+        "selective_risk": 0.3667953667953668,
+        "selective_accuracy": 0.6332046332046333
+      },
+      {
+        "threshold": 0.17878490552468124,
+        "coverage": 0.38648782911077995,
+        "abstention_rate": 0.61351217088922,
+        "selective_risk": 0.36632390745501286,
+        "selective_accuracy": 0.6336760925449871
+      },
+      {
+        "threshold": 0.20105922851936284,
+        "coverage": 0.3869846000993542,
+        "abstention_rate": 0.6130153999006458,
+        "selective_risk": 0.36713735558408217,
+        "selective_accuracy": 0.6328626444159178
+      },
+      {
+        "threshold": 0.21007255210086762,
+        "coverage": 0.38748137108792846,
+        "abstention_rate": 0.6125186289120715,
+        "selective_risk": 0.367948717948718,
+        "selective_accuracy": 0.632051282051282
+      },
+      {
+        "threshold": 0.21018300663998596,
+        "coverage": 0.3879781420765027,
+        "abstention_rate": 0.6120218579234973,
+        "selective_risk": 0.3674775928297055,
+        "selective_accuracy": 0.6325224071702945
+      },
+      {
+        "threshold": 0.21178278905704853,
+        "coverage": 0.388474913065077,
+        "abstention_rate": 0.611525086934923,
+        "selective_risk": 0.3670076726342711,
+        "selective_accuracy": 0.632992327365729
+      },
+      {
+        "threshold": 0.21649476835048526,
+        "coverage": 0.3889716840536513,
+        "abstention_rate": 0.6110283159463488,
+        "selective_risk": 0.3665389527458493,
+        "selective_accuracy": 0.6334610472541506
+      },
+      {
+        "threshold": 0.22201361019475377,
+        "coverage": 0.38946845504222555,
+        "abstention_rate": 0.6105315449577744,
+        "selective_risk": 0.36607142857142855,
+        "selective_accuracy": 0.6339285714285714
+      },
+      {
+        "threshold": 0.2557501135590432,
+        "coverage": 0.3899652260307998,
+        "abstention_rate": 0.6100347739692003,
+        "selective_risk": 0.36560509554140125,
+        "selective_accuracy": 0.6343949044585988
+      },
+      {
+        "threshold": 0.2768823387614539,
+        "coverage": 0.39046199701937406,
+        "abstention_rate": 0.6095380029806259,
+        "selective_risk": 0.3651399491094148,
+        "selective_accuracy": 0.6348600508905853
+      },
+      {
+        "threshold": 0.28244806333642,
+        "coverage": 0.3909587680079483,
+        "abstention_rate": 0.6090412319920517,
+        "selective_risk": 0.36594663278271916,
+        "selective_accuracy": 0.6340533672172808
+      },
+      {
+        "threshold": 0.31019076259548695,
+        "coverage": 0.3914555389965226,
+        "abstention_rate": 0.6085444610034774,
+        "selective_risk": 0.36548223350253806,
+        "selective_accuracy": 0.6345177664974619
+      },
+      {
+        "threshold": 0.3108108108108108,
+        "coverage": 0.8509687034277198,
+        "abstention_rate": 0.1490312965722802,
+        "selective_risk": 0.29188558085230587,
+        "selective_accuracy": 0.7081144191476941
+      },
+      {
+        "threshold": 0.31238284440397734,
+        "coverage": 0.851465474416294,
+        "abstention_rate": 0.14853452558370595,
+        "selective_risk": 0.29229871645274214,
+        "selective_accuracy": 0.7077012835472578
+      },
+      {
+        "threshold": 0.3138418805309392,
+        "coverage": 0.8519622454048683,
+        "abstention_rate": 0.1480377545951317,
+        "selective_risk": 0.2921282798833819,
+        "selective_accuracy": 0.707871720116618
+      },
+      {
+        "threshold": 0.32159832888727896,
+        "coverage": 0.8524590163934426,
+        "abstention_rate": 0.14754098360655743,
+        "selective_risk": 0.2925407925407925,
+        "selective_accuracy": 0.7074592074592074
+      },
+      {
+        "threshold": 0.3234100835207053,
+        "coverage": 0.8529557873820169,
+        "abstention_rate": 0.14704421261798306,
+        "selective_risk": 0.2929528246942341,
+        "selective_accuracy": 0.7070471753057659
+      },
+      {
+        "threshold": 0.328350828585476,
+        "coverage": 0.8534525583705912,
+        "abstention_rate": 0.1465474416294088,
+        "selective_risk": 0.2927823050058207,
+        "selective_accuracy": 0.7072176949941793
+      },
+      {
+        "threshold": 0.33109807850377837,
+        "coverage": 0.8539493293591655,
+        "abstention_rate": 0.14605067064083455,
+        "selective_risk": 0.29261198371146013,
+        "selective_accuracy": 0.7073880162885399
+      },
+      {
+        "threshold": 0.33360755112147406,
+        "coverage": 0.8544461003477397,
+        "abstention_rate": 0.1455538996522603,
+        "selective_risk": 0.2924418604651163,
+        "selective_accuracy": 0.7075581395348838
+      },
+      {
+        "threshold": 0.3468390736548457,
+        "coverage": 0.854942871336314,
+        "abstention_rate": 0.14505712866368603,
+        "selective_risk": 0.29227193492155723,
+        "selective_accuracy": 0.7077280650784428
+      },
+      {
+        "threshold": 0.34742182514434705,
+        "coverage": 0.8554396423248882,
+        "abstention_rate": 0.14456035767511177,
+        "selective_risk": 0.29210220673635306,
+        "selective_accuracy": 0.707897793263647
+      },
+      {
+        "threshold": 0.3533725823843409,
+        "coverage": 0.8559364133134625,
+        "abstention_rate": 0.14406358668653751,
+        "selective_risk": 0.2919326755658735,
+        "selective_accuracy": 0.7080673244341265
+      },
+      {
+        "threshold": 0.35681142657853815,
+        "coverage": 0.8564331843020367,
+        "abstention_rate": 0.14356681569796326,
+        "selective_risk": 0.2917633410672854,
+        "selective_accuracy": 0.7082366589327146
+      },
+      {
+        "threshold": 0.3569050549138778,
+        "coverage": 0.856929955290611,
+        "abstention_rate": 0.143070044709389,
+        "selective_risk": 0.2921739130434783,
+        "selective_accuracy": 0.7078260869565217
+      },
+      {
+        "threshold": 0.361590574045965,
+        "coverage": 0.8574267262791853,
+        "abstention_rate": 0.14257327372081474,
+        "selective_risk": 0.29200463499420626,
+        "selective_accuracy": 0.7079953650057937
+      },
+      {
+        "threshold": 0.36243681729279636,
+        "coverage": 0.8579234972677595,
+        "abstention_rate": 0.14207650273224048,
+        "selective_risk": 0.2918355529820498,
+        "selective_accuracy": 0.7081644470179502
+      },
+      {
+        "threshold": 0.36267292864667044,
+        "coverage": 0.8584202682563339,
+        "abstention_rate": 0.14157973174366612,
+        "selective_risk": 0.29224537037037035,
+        "selective_accuracy": 0.7077546296296297
+      },
+      {
+        "threshold": 0.36316022473249715,
+        "coverage": 0.8589170392449081,
+        "abstention_rate": 0.14108296075509186,
+        "selective_risk": 0.29207634470792365,
+        "selective_accuracy": 0.7079236552920763
+      },
+      {
+        "threshold": 0.3638589024248453,
+        "coverage": 0.8594138102334824,
+        "abstention_rate": 0.1405861897665176,
+        "selective_risk": 0.29190751445086704,
+        "selective_accuracy": 0.708092485549133
+      },
+      {
+        "threshold": 0.3650392350617159,
+        "coverage": 0.8599105812220567,
+        "abstention_rate": 0.14008941877794334,
+        "selective_risk": 0.29231658001155403,
+        "selective_accuracy": 0.707683419988446
+      },
+      {
+        "threshold": 0.3684718256626057,
+        "coverage": 0.8604073522106309,
+        "abstention_rate": 0.13959264778936908,
+        "selective_risk": 0.2921478060046189,
+        "selective_accuracy": 0.707852193995381
+      },
+      {
+        "threshold": 0.37448633400544457,
+        "coverage": 0.8609041231992052,
+        "abstention_rate": 0.13909587680079483,
+        "selective_risk": 0.2919792267743797,
+        "selective_accuracy": 0.7080207732256203
+      },
+      {
+        "threshold": 0.3763702852594538,
+        "coverage": 0.8614008941877794,
+        "abstention_rate": 0.13859910581222057,
+        "selective_risk": 0.2918108419838524,
+        "selective_accuracy": 0.7081891580161477
+      },
+      {
+        "threshold": 0.38035111184152304,
+        "coverage": 0.8618976651763537,
+        "abstention_rate": 0.1381023348236463,
+        "selective_risk": 0.2922190201729107,
+        "selective_accuracy": 0.7077809798270893
+      },
+      {
+        "threshold": 0.3818281653443547,
+        "coverage": 0.862394436164928,
+        "abstention_rate": 0.13760556383507205,
+        "selective_risk": 0.29205069124423966,
+        "selective_accuracy": 0.7079493087557603
+      },
+      {
+        "threshold": 0.38921273200969086,
+        "coverage": 0.8628912071535022,
+        "abstention_rate": 0.1371087928464978,
+        "selective_risk": 0.2918825561312608,
+        "selective_accuracy": 0.7081174438687392
+      },
+      {
+        "threshold": 0.390408316495237,
+        "coverage": 0.8633879781420765,
+        "abstention_rate": 0.13661202185792354,
+        "selective_risk": 0.29171461449942465,
+        "selective_accuracy": 0.7082853855005753
+      },
+      {
+        "threshold": 0.39491108896393307,
+        "coverage": 0.8638847491306507,
+        "abstention_rate": 0.13611525086934928,
+        "selective_risk": 0.29212190914318575,
+        "selective_accuracy": 0.7078780908568143
+      },
+      {
+        "threshold": 0.3954068656977411,
+        "coverage": 0.8643815201192251,
+        "abstention_rate": 0.1356184798807749,
+        "selective_risk": 0.2925287356321839,
+        "selective_accuracy": 0.707471264367816
+      },
+      {
+        "threshold": 0.3955004298012066,
+        "coverage": 0.8648782911077993,
+        "abstention_rate": 0.13512170889220065,
+        "selective_risk": 0.29236071223434806,
+        "selective_accuracy": 0.7076392877656519
+      },
+      {
+        "threshold": 0.3979744383924226,
+        "coverage": 0.8653750620963736,
+        "abstention_rate": 0.1346249379036264,
+        "selective_risk": 0.29219288174512054,
+        "selective_accuracy": 0.7078071182548795
+      },
+      {
+        "threshold": 0.399896413247645,
+        "coverage": 0.8658718330849479,
+        "abstention_rate": 0.13412816691505214,
+        "selective_risk": 0.29202524383247275,
+        "selective_accuracy": 0.7079747561675273
+      },
+      {
+        "threshold": 0.4004704812829681,
+        "coverage": 0.8663686040735221,
+        "abstention_rate": 0.13363139592647788,
+        "selective_risk": 0.2918577981651376,
+        "selective_accuracy": 0.7081422018348624
+      },
+      {
+        "threshold": 0.40159149214334855,
+        "coverage": 0.8668653750620964,
+        "abstention_rate": 0.13313462493790362,
+        "selective_risk": 0.29169054441260744,
+        "selective_accuracy": 0.7083094555873926
+      },
+      {
+        "threshold": 0.40517913894029645,
+        "coverage": 0.8673621460506706,
+        "abstention_rate": 0.13263785394932937,
+        "selective_risk": 0.29152348224513175,
+        "selective_accuracy": 0.7084765177548682
+      },
+      {
+        "threshold": 0.40640426524130835,
+        "coverage": 0.8678589170392449,
+        "abstention_rate": 0.1321410829607551,
+        "selective_risk": 0.29135661133371493,
+        "selective_accuracy": 0.7086433886662851
+      },
+      {
+        "threshold": 0.4083501697044474,
+        "coverage": 0.8683556880278192,
+        "abstention_rate": 0.13164431197218085,
+        "selective_risk": 0.2911899313501144,
+        "selective_accuracy": 0.7088100686498856
+      },
+      {
+        "threshold": 0.4085517025041333,
+        "coverage": 0.8688524590163934,
+        "abstention_rate": 0.1311475409836066,
+        "selective_risk": 0.2910234419668382,
+        "selective_accuracy": 0.7089765580331617
+      },
+      {
+        "threshold": 0.41299496313235795,
+        "coverage": 0.8693492300049677,
+        "abstention_rate": 0.13065076999503233,
+        "selective_risk": 0.2914285714285714,
+        "selective_accuracy": 0.7085714285714286
+      },
+      {
+        "threshold": 0.41977313314379894,
+        "coverage": 0.8698460009935419,
+        "abstention_rate": 0.13015399900645808,
+        "selective_risk": 0.2912621359223301,
+        "selective_accuracy": 0.7087378640776699
+      },
+      {
+        "threshold": 0.4204469212417562,
+        "coverage": 0.8703427719821163,
+        "abstention_rate": 0.1296572280178837,
+        "selective_risk": 0.2910958904109589,
+        "selective_accuracy": 0.7089041095890412
+      },
+      {
+        "threshold": 0.4223573796685342,
+        "coverage": 0.8708395429706905,
+        "abstention_rate": 0.12916045702930945,
+        "selective_risk": 0.29092983456930976,
+        "selective_accuracy": 0.7090701654306902
+      },
+      {
+        "threshold": 0.4228010808867162,
+        "coverage": 0.8713363139592648,
+        "abstention_rate": 0.1286636860407352,
+        "selective_risk": 0.2913340935005701,
+        "selective_accuracy": 0.7086659064994298
+      },
+      {
+        "threshold": 0.4233367449214861,
+        "coverage": 0.8718330849478391,
+        "abstention_rate": 0.12816691505216093,
+        "selective_risk": 0.29116809116809117,
+        "selective_accuracy": 0.7088319088319088
+      },
+      {
+        "threshold": 0.42857142857142855,
+        "coverage": 0.9672131147540983,
+        "abstention_rate": 0.032786885245901676,
+        "selective_risk": 0.29275808936825887,
+        "selective_accuracy": 0.7072419106317411
+      },
+      {
+        "threshold": 0.4333023555582955,
+        "coverage": 0.9677098857426726,
+        "abstention_rate": 0.03229011425732742,
+        "selective_risk": 0.2926078028747433,
+        "selective_accuracy": 0.7073921971252567
+      },
+      {
+        "threshold": 0.43462383003919625,
+        "coverage": 0.9682066567312468,
+        "abstention_rate": 0.03179334326875316,
+        "selective_risk": 0.29245767060030786,
+        "selective_accuracy": 0.7075423293996921
+      },
+      {
+        "threshold": 0.43486118267092194,
+        "coverage": 0.9687034277198212,
+        "abstention_rate": 0.03129657228017879,
+        "selective_risk": 0.2928205128205128,
+        "selective_accuracy": 0.7071794871794872
+      },
+      {
+        "threshold": 0.43490658669386995,
+        "coverage": 0.9692001987083955,
+        "abstention_rate": 0.030799801291604534,
+        "selective_risk": 0.2926704254228601,
+        "selective_accuracy": 0.70732957457714
+      },
+      {
+        "threshold": 0.43594307773796664,
+        "coverage": 0.9696969696969697,
+        "abstention_rate": 0.030303030303030276,
+        "selective_risk": 0.2925204918032787,
+        "selective_accuracy": 0.7074795081967213
+      },
+      {
+        "threshold": 0.43652576004401683,
+        "coverage": 0.970193740685544,
+        "abstention_rate": 0.02980625931445602,
+        "selective_risk": 0.29237071172555046,
+        "selective_accuracy": 0.7076292882744495
+      },
+      {
+        "threshold": 0.43688728336314264,
+        "coverage": 0.9706905116741182,
+        "abstention_rate": 0.02930948832588176,
+        "selective_risk": 0.2922210849539406,
+        "selective_accuracy": 0.7077789150460594
+      },
+      {
+        "threshold": 0.4389369395384125,
+        "coverage": 0.9711872826626925,
+        "abstention_rate": 0.028812717337307503,
+        "selective_risk": 0.2925831202046036,
+        "selective_accuracy": 0.7074168797953964
+      },
+      {
+        "threshold": 0.43987138342391185,
+        "coverage": 0.9716840536512668,
+        "abstention_rate": 0.028315946348733245,
+        "selective_risk": 0.2929447852760736,
+        "selective_accuracy": 0.7070552147239264
+      },
+      {
+        "threshold": 0.44071238404509117,
+        "coverage": 0.972180824639841,
+        "abstention_rate": 0.027819175360158988,
+        "selective_risk": 0.29330608073582015,
+        "selective_accuracy": 0.7066939192641799
+      },
+      {
+        "threshold": 0.440829869432621,
+        "coverage": 0.9726775956284153,
+        "abstention_rate": 0.02732240437158473,
+        "selective_risk": 0.2931562819203269,
+        "selective_accuracy": 0.7068437180796732
+      },
+      {
+        "threshold": 0.4460361875552776,
+        "coverage": 0.9731743666169895,
+        "abstention_rate": 0.026825633383010472,
+        "selective_risk": 0.2930066360387953,
+        "selective_accuracy": 0.7069933639612047
+      },
+      {
+        "threshold": 0.4481034948967731,
+        "coverage": 0.9736711376055638,
+        "abstention_rate": 0.026328862394436214,
+        "selective_risk": 0.29285714285714287,
+        "selective_accuracy": 0.7071428571428571
+      },
+      {
+        "threshold": 0.4521024251255118,
+        "coverage": 0.9741679085941382,
+        "abstention_rate": 0.025832091405861846,
+        "selective_risk": 0.2927078021417644,
+        "selective_accuracy": 0.7072921978582356
+      },
+      {
+        "threshold": 0.4525371360501146,
+        "coverage": 0.9746646795827124,
+        "abstention_rate": 0.025335320417287588,
+        "selective_risk": 0.29255861365953106,
+        "selective_accuracy": 0.7074413863404689
+      },
+      {
+        "threshold": 0.45473351336991336,
+        "coverage": 0.9751614505712867,
+        "abstention_rate": 0.02483854942871333,
+        "selective_risk": 0.2924095771777891,
+        "selective_accuracy": 0.707590422822211
+      },
+      {
+        "threshold": 0.4636662687777021,
+        "coverage": 0.9756582215598609,
+        "abstention_rate": 0.024341778440139072,
+        "selective_risk": 0.29276985743380857,
+        "selective_accuracy": 0.7072301425661914
+      },
+      {
+        "threshold": 0.4639860177941006,
+        "coverage": 0.9761549925484352,
+        "abstention_rate": 0.023845007451564815,
+        "selective_risk": 0.2926208651399491,
+        "selective_accuracy": 0.7073791348600509
+      },
+      {
+        "threshold": 0.4699051167394803,
+        "coverage": 0.9766517635370094,
+        "abstention_rate": 0.023348236462990557,
+        "selective_risk": 0.29247202441505593,
+        "selective_accuracy": 0.7075279755849441
+      },
+      {
+        "threshold": 0.48073979571722464,
+        "coverage": 0.9771485345255837,
+        "abstention_rate": 0.0228514654744163,
+        "selective_risk": 0.2923233350279614,
+        "selective_accuracy": 0.7076766649720386
+      },
+      {
+        "threshold": 0.480816460254092,
+        "coverage": 0.977645305514158,
+        "abstention_rate": 0.02235469448584204,
+        "selective_risk": 0.2921747967479675,
+        "selective_accuracy": 0.7078252032520325
+      },
+      {
+        "threshold": 0.4816824838606694,
+        "coverage": 0.9781420765027322,
+        "abstention_rate": 0.021857923497267784,
+        "selective_risk": 0.292534281361097,
+        "selective_accuracy": 0.7074657186389031
+      },
+      {
+        "threshold": 0.4902484266547874,
+        "coverage": 0.9786388474913065,
+        "abstention_rate": 0.021361152508693526,
+        "selective_risk": 0.2923857868020305,
+        "selective_accuracy": 0.7076142131979695
+      },
+      {
+        "threshold": 0.4925494713098122,
+        "coverage": 0.9791356184798807,
+        "abstention_rate": 0.02086438152011927,
+        "selective_risk": 0.29274479959411465,
+        "selective_accuracy": 0.7072552004058854
+      },
+      {
+        "threshold": 0.4943605758084091,
+        "coverage": 0.979632389468455,
+        "abstention_rate": 0.02036761053154501,
+        "selective_risk": 0.29259634888438135,
+        "selective_accuracy": 0.7074036511156186
+      },
+      {
+        "threshold": 0.4981282261467043,
+        "coverage": 0.9801291604570294,
+        "abstention_rate": 0.019870839542970642,
+        "selective_risk": 0.29295489102889,
+        "selective_accuracy": 0.7070451089711101
+      },
+      {
+        "threshold": 0.5037220915392973,
+        "coverage": 0.9806259314456036,
+        "abstention_rate": 0.019374068554396384,
+        "selective_risk": 0.2933130699088146,
+        "selective_accuracy": 0.7066869300911853
+      },
+      {
+        "threshold": 0.5096467182080726,
+        "coverage": 0.9811227024341779,
+        "abstention_rate": 0.018877297565822126,
+        "selective_risk": 0.2931645569620253,
+        "selective_accuracy": 0.7068354430379746
+      },
+      {
+        "threshold": 0.5097633187648621,
+        "coverage": 0.9816194734227521,
+        "abstention_rate": 0.01838052657724787,
+        "selective_risk": 0.2935222672064777,
+        "selective_accuracy": 0.7064777327935223
+      },
+      {
+        "threshold": 0.5158463285322783,
+        "coverage": 0.9821162444113264,
+        "abstention_rate": 0.01788375558867361,
+        "selective_risk": 0.29387961557916037,
+        "selective_accuracy": 0.7061203844208397
+      },
+      {
+        "threshold": 0.5213233477242935,
+        "coverage": 0.9826130153999006,
+        "abstention_rate": 0.017386984600099353,
+        "selective_risk": 0.2942366026289181,
+        "selective_accuracy": 0.705763397371082
+      },
+      {
+        "threshold": 0.5233843361655321,
+        "coverage": 0.9831097863884749,
+        "abstention_rate": 0.016890213611525096,
+        "selective_risk": 0.2945932289034866,
+        "selective_accuracy": 0.7054067710965134
+      },
+      {
+        "threshold": 0.5257392068394745,
+        "coverage": 0.9836065573770492,
+        "abstention_rate": 0.016393442622950838,
+        "selective_risk": 0.29444444444444445,
+        "selective_accuracy": 0.7055555555555555
+      },
+      {
+        "threshold": 0.5379634271799218,
+        "coverage": 0.9841033283656234,
+        "abstention_rate": 0.01589667163437658,
+        "selective_risk": 0.2942958101968703,
+        "selective_accuracy": 0.7057041898031298
+      },
+      {
+        "threshold": 0.5430933875149101,
+        "coverage": 0.9846000993541977,
+        "abstention_rate": 0.015399900645802322,
+        "selective_risk": 0.2946518668012109,
+        "selective_accuracy": 0.7053481331987891
+      },
+      {
+        "threshold": 0.5491010115758724,
+        "coverage": 0.9850968703427719,
+        "abstention_rate": 0.014903129657228065,
+        "selective_risk": 0.2950075642965204,
+        "selective_accuracy": 0.7049924357034796
+      },
+      {
+        "threshold": 0.5669490129849919,
+        "coverage": 0.9855936413313463,
+        "abstention_rate": 0.014406358668653696,
+        "selective_risk": 0.29485887096774194,
+        "selective_accuracy": 0.705141129032258
+      },
+      {
+        "threshold": 0.5715529138301497,
+        "coverage": 0.9860904123199206,
+        "abstention_rate": 0.013909587680079438,
+        "selective_risk": 0.2947103274559194,
+        "selective_accuracy": 0.7052896725440806
+      },
+      {
+        "threshold": 0.5716654179506885,
+        "coverage": 0.9865871833084948,
+        "abstention_rate": 0.01341281669150518,
+        "selective_risk": 0.2945619335347432,
+        "selective_accuracy": 0.7054380664652569
+      },
+      {
+        "threshold": 0.5726894000376287,
+        "coverage": 0.9870839542970691,
+        "abstention_rate": 0.012916045702930923,
+        "selective_risk": 0.29441368897835934,
+        "selective_accuracy": 0.7055863110216407
+      },
+      {
+        "threshold": 0.583520600357172,
+        "coverage": 0.9875807252856433,
+        "abstention_rate": 0.012419274714356665,
+        "selective_risk": 0.2942655935613682,
+        "selective_accuracy": 0.7057344064386317
+      },
+      {
+        "threshold": 0.5940606176121982,
+        "coverage": 0.9880774962742176,
+        "abstention_rate": 0.011922503725782407,
+        "selective_risk": 0.2946204122674711,
+        "selective_accuracy": 0.7053795877325288
+      },
+      {
+        "threshold": 0.6037014002253283,
+        "coverage": 0.9885742672627919,
+        "abstention_rate": 0.01142573273720815,
+        "selective_risk": 0.29447236180904524,
+        "selective_accuracy": 0.7055276381909548
+      },
+      {
+        "threshold": 0.6239636076146906,
+        "coverage": 0.9890710382513661,
+        "abstention_rate": 0.010928961748633892,
+        "selective_risk": 0.29482672024108486,
+        "selective_accuracy": 0.7051732797589152
+      },
+      {
+        "threshold": 0.6240951361499532,
+        "coverage": 0.9895678092399404,
+        "abstention_rate": 0.010432190760059634,
+        "selective_risk": 0.29518072289156627,
+        "selective_accuracy": 0.7048192771084337
+      },
+      {
+        "threshold": 0.6298548365145522,
+        "coverage": 0.9900645802285146,
+        "abstention_rate": 0.009935419771485376,
+        "selective_risk": 0.2950326141495233,
+        "selective_accuracy": 0.7049673858504767
+      },
+      {
+        "threshold": 0.6382766806455201,
+        "coverage": 0.9905613512170889,
+        "abstention_rate": 0.009438648782911119,
+        "selective_risk": 0.29538615847542626,
+        "selective_accuracy": 0.7046138415245737
+      },
+      {
+        "threshold": 0.6618356352326309,
+        "coverage": 0.9910581222056631,
+        "abstention_rate": 0.008941877794336861,
+        "selective_risk": 0.2957393483709273,
+        "selective_accuracy": 0.7042606516290727
+      },
+      {
+        "threshold": 0.7030603862952204,
+        "coverage": 0.9915548931942375,
+        "abstention_rate": 0.008445106805762492,
+        "selective_risk": 0.29609218436873747,
+        "selective_accuracy": 0.7039078156312626
+      },
+      {
+        "threshold": 0.7389535848356321,
+        "coverage": 0.9920516641828118,
+        "abstention_rate": 0.007948335817188235,
+        "selective_risk": 0.29644466700050076,
+        "selective_accuracy": 0.7035553329994992
+      },
+      {
+        "threshold": 0.7396516685628336,
+        "coverage": 0.992548435171386,
+        "abstention_rate": 0.007451564828613977,
+        "selective_risk": 0.2962962962962963,
+        "selective_accuracy": 0.7037037037037037
+      },
+      {
+        "threshold": 0.7541180777165009,
+        "coverage": 0.9930452061599603,
+        "abstention_rate": 0.006954793840039719,
+        "selective_risk": 0.29664832416208103,
+        "selective_accuracy": 0.703351675837919
+      },
+      {
+        "threshold": 0.7668736707326904,
+        "coverage": 0.9935419771485345,
+        "abstention_rate": 0.006458022851465461,
+        "selective_risk": 0.297,
+        "selective_accuracy": 0.7030000000000001
+      },
+      {
+        "threshold": 0.816252446338955,
+        "coverage": 0.9940387481371088,
+        "abstention_rate": 0.005961251862891204,
+        "selective_risk": 0.29685157421289354,
+        "selective_accuracy": 0.7031484257871065
+      },
+      {
+        "threshold": 0.8182924647480618,
+        "coverage": 0.994535519125683,
+        "abstention_rate": 0.005464480874316946,
+        "selective_risk": 0.2972027972027972,
+        "selective_accuracy": 0.7027972027972028
+      },
+      {
+        "threshold": 0.8936108231046302,
+        "coverage": 0.9950322901142573,
+        "abstention_rate": 0.004967709885742688,
+        "selective_risk": 0.29755366949575635,
+        "selective_accuracy": 0.7024463305042437
+      },
+      {
+        "threshold": 0.9275777459124319,
+        "coverage": 0.9955290611028316,
+        "abstention_rate": 0.0044709388971684305,
+        "selective_risk": 0.29790419161676646,
+        "selective_accuracy": 0.7020958083832336
+      },
+      {
+        "threshold": 0.9532764969373302,
+        "coverage": 0.9960258320914058,
+        "abstention_rate": 0.003974167908594173,
+        "selective_risk": 0.2977556109725686,
+        "selective_accuracy": 0.7022443890274315
+      },
+      {
+        "threshold": 0.9743654089497673,
+        "coverage": 0.9965226030799801,
+        "abstention_rate": 0.003477396920019915,
+        "selective_risk": 0.29810568295114653,
+        "selective_accuracy": 0.7018943170488534
+      },
+      {
+        "threshold": 1.0,
+        "coverage": 1.0,
+        "abstention_rate": 0.0,
+        "selective_risk": 0.29905613512170887,
+        "selective_accuracy": 0.7009438648782911
+      },
+      {
+        "threshold": 1.0,
+        "coverage": 1.0,
+        "abstention_rate": 0.0,
+        "selective_risk": 0.29905613512170887,
+        "selective_accuracy": 0.7009438648782911
+      }
+    ]
+  }
+}

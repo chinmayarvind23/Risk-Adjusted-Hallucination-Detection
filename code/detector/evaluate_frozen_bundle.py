@@ -243,21 +243,19 @@ def _apply_bundle_calibration(calibration: Dict, logits: np.ndarray, raw_probs: 
             float(fit_parameters["coef"]) * logits + float(fit_parameters["intercept"])
         )
     if method == "isotonic regression":
-        # The bundle stores the method choice, but isotonic itself is piecewise and must be reconstructed
-        # from the source report rather than from threshold count alone. For transfer, require the source
-        # report to be used only when fit details are fully serialized.
+        # Rebuild the piecewise-constant isotonic calibrator from the serialized
+        # thresholds saved in the frozen bundle.
         if "x_thresholds" in fit_parameters and "y_thresholds" in fit_parameters:
-            model = IsotonicRegression(out_of_bounds="clip")
-            model.X_thresholds_ = np.array(fit_parameters["x_thresholds"], dtype=np.float64)
-            model.y_thresholds_ = np.array(fit_parameters["y_thresholds"], dtype=np.float64)
-            model.f_ = lambda x: np.interp(
-                x,
-                model.X_thresholds_,
-                model.y_thresholds_,
-                left=model.y_thresholds_[0],
-                right=model.y_thresholds_[-1],
+            x_thresholds = np.array(fit_parameters["x_thresholds"], dtype=np.float64)
+            y_thresholds = np.array(fit_parameters["y_thresholds"], dtype=np.float64)
+            calibrated = np.interp(
+                raw_probs,
+                x_thresholds,
+                y_thresholds,
+                left=y_thresholds[0],
+                right=y_thresholds[-1],
             )
-            return np.clip(model.predict(raw_probs), 0.0, 1.0)
+            return np.clip(calibrated, 0.0, 1.0)
         raise ValueError("Frozen bundle isotonic calibration is missing serialized thresholds.")
     raise ValueError(f"Unsupported calibration method in bundle: {calibration['method']}")
 
