@@ -1,8 +1,22 @@
 from __future__ import annotations
 
+"""
+Run practical baseline detectors on the standardized feature tables.
+
+The baselines isolate individual signals, compare the full four-feature model,
+and include two weak reference systems:
+
+- a manual weighted score
+- a random score
+
+These results support the main claim that combining uncertainty and
+groundedness is stronger than relying on a single signal.
+"""
+
 import argparse
 import csv
 import json
+import sys
 from pathlib import Path
 from typing import Dict, List, Sequence, Tuple
 
@@ -34,12 +48,26 @@ BASELINE_FEATURE_SETS = {
 }
 
 
+def _set_csv_field_limit() -> None:
+    """Allow very long CSV text fields, especially retained context columns."""
+    limit = sys.maxsize
+    while True:
+        try:
+            csv.field_size_limit(limit)
+            return
+        except OverflowError:
+            limit //= 10
+
+
 def _read_csv_rows(path: Path) -> List[Dict[str, str]]:
+    """Read a CSV split fully into memory."""
+    _set_csv_field_limit()
     with path.open("r", encoding="utf-8", newline="") as handle:
         return list(csv.DictReader(handle))
 
 
 def _rows_to_xy(rows: Sequence[Dict[str, str]], feature_columns: Sequence[str]) -> Tuple[np.ndarray, np.ndarray]:
+    """Project a row set onto a selected subset of detector features."""
     x = np.array(
         [[float(row[column]) for column in feature_columns] for row in rows],
         dtype=np.float64,
@@ -49,12 +77,14 @@ def _rows_to_xy(rows: Sequence[Dict[str, str]], feature_columns: Sequence[str]) 
 
 
 def _safe_roc_auc(y_true: np.ndarray, y_score: np.ndarray) -> float | None:
+    """Guard AUROC when only one class is present in a split."""
     if len(set(y_true.tolist())) < 2:
         return None
     return float(roc_auc_score(y_true, y_score))
 
 
 def _classification_metrics(y_true: np.ndarray, y_score: np.ndarray, threshold: float) -> Dict[str, float | None]:
+    """Compute the common detector metrics at a fixed decision threshold."""
     y_pred = (y_score >= threshold).astype(int)
     return {
         "auroc": _safe_roc_auc(y_true, y_score),
@@ -68,6 +98,7 @@ def _classification_metrics(y_true: np.ndarray, y_score: np.ndarray, threshold: 
 
 
 def _find_best_threshold_for_f1(y_true: np.ndarray, y_score: np.ndarray) -> Tuple[float, Dict[str, float | None]]:
+    """Select the validation threshold that gives the highest F1."""
     candidate_thresholds = sorted(set(float(score) for score in y_score.tolist()))
     candidate_thresholds = [0.0] + candidate_thresholds + [1.0]
 
@@ -87,6 +118,7 @@ def _find_best_threshold_for_f1(y_true: np.ndarray, y_score: np.ndarray) -> Tupl
 
 
 def _build_logreg(c_value: float, max_iter: int, class_weight: str) -> LogisticRegression:
+    """Create the logistic regression baseline used for each feature subset."""
     return LogisticRegression(
         C=c_value,
         max_iter=max_iter,
@@ -97,6 +129,7 @@ def _build_logreg(c_value: float, max_iter: int, class_weight: str) -> LogisticR
 
 
 def _manual_weighted_scores(x: np.ndarray) -> np.ndarray:
+    """Hand-built ablation score that reflects the intended feature ordering."""
     token = x[:, 0]
     self_consistency = x[:, 1]
     semantic = x[:, 2]
@@ -117,6 +150,7 @@ def _tune_logreg(
     class_weights: Sequence[str],
     max_iter: int,
 ) -> Dict:
+    """Tune one baseline detector on validation F1 and report all split metrics."""
     best_trial = None
     best_objective = float("-inf")
     all_trials = []
@@ -160,6 +194,7 @@ def _tune_logreg(
 
 
 def main() -> None:
+    """Run all baseline detectors and save one combined JSON report."""
     parser = argparse.ArgumentParser(description="Run practical detector baselines on standardized feature splits.")
     parser.add_argument("--train", required=True)
     parser.add_argument("--val", required=True)
@@ -181,6 +216,8 @@ def main() -> None:
     c_values = [float(value.strip()) for value in args.c_grid.split(",") if value.strip()]
     class_weights = [value.strip() for value in args.class_weight_grid.split(",") if value.strip()]
 
+    # Each named baseline is trained separately so the final report can show
+    # which signals are useful on their own and which combinations matter.
     baselines: Dict[str, Dict] = {}
     for baseline_name, feature_columns in BASELINE_FEATURE_SETS.items():
         x_train, y_train = _rows_to_xy(train_rows, feature_columns)
@@ -224,6 +261,7 @@ def main() -> None:
         },
     }
 
+    # The random baseline is a floor reference, not a real detector.
     rng = np.random.default_rng(args.seed)
     random_train = rng.random(len(y_train_all))
     random_val = rng.random(len(y_val_all))

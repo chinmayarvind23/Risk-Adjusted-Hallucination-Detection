@@ -1,8 +1,29 @@
 from __future__ import annotations
 
+"""
+Train the main logistic regression hallucination detector.
+
+This script expects train, validation, and test CSV files that already contain
+the four standardized detector features:
+
+- mean_token_nll
+- self_consistency_disagreement
+- semantic_entropy
+- groundedness_score
+
+It produces two kinds of detector outputs:
+
+1. A plain logistic regression model with a fixed threshold of 0.5.
+2. A tuned logistic regression model that chooses hyperparameters and a
+   decision threshold using validation F1.
+
+The saved JSON report is later consumed by calibration and abstention scripts.
+"""
+
 import argparse
 import csv
 import json
+import sys
 from pathlib import Path
 from typing import Dict, List, Sequence, Tuple
 
@@ -26,12 +47,26 @@ FEATURE_COLUMNS = [
 ]
 
 
+def _set_csv_field_limit() -> None:
+    """Allow CSV readers to handle long context fields without truncation errors."""
+    limit = sys.maxsize
+    while True:
+        try:
+            csv.field_size_limit(limit)
+            return
+        except OverflowError:
+            limit //= 10
+
+
 def _read_csv_rows(path: Path) -> List[Dict[str, str]]:
+    """Read the full CSV into memory because the downstream metrics need all rows."""
+    _set_csv_field_limit()
     with path.open("r", encoding="utf-8", newline="") as handle:
         return list(csv.DictReader(handle))
 
 
 def _rows_to_xy(rows: Sequence[Dict[str, str]]) -> Tuple[np.ndarray, np.ndarray]:
+    """Convert CSV row dictionaries into feature matrix X and binary labels y."""
     x = np.array(
         [
             [float(row[column]) for column in FEATURE_COLUMNS]
@@ -44,12 +79,14 @@ def _rows_to_xy(rows: Sequence[Dict[str, str]]) -> Tuple[np.ndarray, np.ndarray]
 
 
 def _safe_roc_auc(y_true: np.ndarray, y_score: np.ndarray) -> float | None:
+    """Return AUROC when both classes are present. Otherwise return None."""
     if len(set(y_true.tolist())) < 2:
         return None
     return float(roc_auc_score(y_true, y_score))
 
 
 def _classification_metrics(y_true: np.ndarray, y_score: np.ndarray, threshold: float = 0.5) -> Dict[str, float | None]:
+    """Compute the detector metrics used throughout the project."""
     y_pred = (y_score >= threshold).astype(int)
     return {
         "auroc": _safe_roc_auc(y_true, y_score),
@@ -63,6 +100,7 @@ def _classification_metrics(y_true: np.ndarray, y_score: np.ndarray, threshold: 
 
 
 def _find_best_threshold_for_f1(y_true: np.ndarray, y_score: np.ndarray) -> Tuple[float, Dict[str, float | None]]:
+    """Sweep score cutoffs and keep the one with the best validation F1."""
     candidate_thresholds = sorted(set(float(score) for score in y_score.tolist()))
     candidate_thresholds = [0.0] + candidate_thresholds + [1.0]
 
@@ -109,6 +147,7 @@ def _manual_weighted_scores(x: np.ndarray) -> np.ndarray:
 
 
 def _build_logreg(C: float, max_iter: int, class_weight: str | None) -> LogisticRegression:
+    """Build a deterministic logistic regression classifier for repeatable runs."""
     return LogisticRegression(
         C=C,
         max_iter=max_iter,
@@ -119,6 +158,7 @@ def _build_logreg(C: float, max_iter: int, class_weight: str | None) -> Logistic
 
 
 def main() -> None:
+    """Train the detector, evaluate it, and save a structured JSON report."""
     parser = argparse.ArgumentParser(description="Train logistic regression detector on standardized feature splits.")
     parser.add_argument("--train", required=True, help="Standardized train CSV")
     parser.add_argument("--val", required=True, help="Standardized validation CSV")
@@ -148,6 +188,7 @@ def main() -> None:
     x_val, y_val = _rows_to_xy(val_rows)
     x_test, y_test = _rows_to_xy(test_rows)
 
+    # This is the simple reference detector before any practical tuning.
     model = _build_logreg(C=args.c, max_iter=args.max_iter, class_weight="none")
     model.fit(x_train, y_train)
 
@@ -159,6 +200,7 @@ def main() -> None:
     val_metrics = _classification_metrics(y_val, val_scores)
     test_metrics = _classification_metrics(y_test, test_scores)
 
+    # The manual ablation is not learned. It is a hand-set comparison point.
     manual_train_scores = _manual_weighted_scores(x_train)
     manual_val_scores = _manual_weighted_scores(x_val)
     manual_test_scores = _manual_weighted_scores(x_test)
@@ -176,6 +218,7 @@ def main() -> None:
         best_trial = None
         best_objective = float("-inf")
 
+        # Tune on validation only. Test is reported once the validation choice is fixed.
         for c_value in c_values:
             for class_weight_value in class_weight_values:
                 candidate_model = _build_logreg(
@@ -224,6 +267,8 @@ def main() -> None:
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # The report contains both the baseline learned detector and the manual ablation
+    # so later scripts can compare them without retraining.
     report = {
         "feature_columns": FEATURE_COLUMNS,
         "train_rows": len(train_rows),

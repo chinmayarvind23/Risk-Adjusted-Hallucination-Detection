@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+"""Plot a small side by side summary for PHANTOM and WikiQA runs.
+
+This file is only for quick comparison figures. It does not train models or
+change any results. It reads summary JSON files that were created after feature
+generation and turns them into a simple bar chart for inspection or slides.
+"""
+
 import argparse
 import json
 from pathlib import Path
@@ -18,11 +25,13 @@ SUMMARY_KEYS = [
 
 
 def _load_summary(path: Path) -> Dict:
+    """Read one summary JSON file produced by the merge step."""
     with path.open("r", encoding="utf-8") as handle:
         return json.load(handle)
 
 
 def _judge_unsupported_rate(summary: Dict) -> float:
+    """Compute the unsupported fraction from the stored judge histogram."""
     histogram = summary.get("judge_label_histogram", {})
     supported = int(histogram.get("0", 0))
     unsupported = int(histogram.get("1", 0))
@@ -31,6 +40,7 @@ def _judge_unsupported_rate(summary: Dict) -> float:
 
 
 def _dataset_label(path: Path, summary: Dict) -> str:
+    """Infer a readable dataset label from the filename or JSON payload."""
     if "phantom" in path.name.lower():
         return "PHANTOM"
     if "wikiqa" in path.name.lower():
@@ -39,6 +49,7 @@ def _dataset_label(path: Path, summary: Dict) -> str:
 
 
 def plot_comparison(summary_paths: List[Path], output_path: Path) -> None:
+    """Plot feature means and unsupported rate for a small two dataset comparison."""
     summaries = [_load_summary(path) for path in summary_paths]
     labels = [_dataset_label(path, summary) for path, summary in zip(summary_paths, summaries)]
 
@@ -86,6 +97,7 @@ def plot_comparison(summary_paths: List[Path], output_path: Path) -> None:
 
 
 def _build_arg_parser() -> argparse.ArgumentParser:
+    """Keep CLI setup in one place so the script is easy to run from terminal."""
     parser = argparse.ArgumentParser(description="Plot comparison figure from two summary JSON files.")
     parser.add_argument("--phantom-summary", required=True)
     parser.add_argument("--wikiqa-summary", required=True)

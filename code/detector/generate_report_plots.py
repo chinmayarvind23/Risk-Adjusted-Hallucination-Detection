@@ -1,8 +1,21 @@
 from __future__ import annotations
 
+"""
+Generate the main detector plots used in the report and poster.
+
+These figures summarize:
+
+- how the full detector compares to simpler baselines
+- what weights the learned detector assigns to each feature
+- how the standardized features are distributed by label
+- how correlated the features are
+- how the main models behave on ROC and PR curves
+"""
+
 import argparse
 import csv
 import json
+import sys
 from pathlib import Path
 from typing import Dict, Iterable, List, Sequence, Tuple
 
@@ -66,16 +79,31 @@ BASELINE_COLORS = {
 
 
 def _load_json(path: Path) -> Dict:
+    """Load a saved JSON report."""
     with path.open("r", encoding="utf-8") as handle:
         return json.load(handle)
 
 
+def _set_csv_field_limit() -> None:
+    """Allow CSV readers to handle long retained text columns."""
+    limit = sys.maxsize
+    while True:
+        try:
+            csv.field_size_limit(limit)
+            return
+        except OverflowError:
+            limit //= 10
+
+
 def _read_csv_rows(path: Path) -> List[Dict[str, str]]:
+    """Read a CSV split into row dictionaries."""
+    _set_csv_field_limit()
     with path.open("r", encoding="utf-8", newline="") as handle:
         return list(csv.DictReader(handle))
 
 
 def _rows_to_xy(rows: Sequence[Dict[str, str]], feature_columns: Sequence[str]) -> Tuple[np.ndarray, np.ndarray]:
+    """Convert rows into a feature matrix and label vector."""
     x = np.array(
         [[float(row[column]) for column in feature_columns] for row in rows],
         dtype=np.float64,
@@ -85,20 +113,24 @@ def _rows_to_xy(rows: Sequence[Dict[str, str]], feature_columns: Sequence[str]) 
 
 
 def _sigmoid(x: np.ndarray) -> np.ndarray:
+    """Map linear scores to probability-like outputs."""
     return 1.0 / (1.0 + np.exp(-x))
 
 
 def _manual_weighted_scores(x: np.ndarray) -> np.ndarray:
+    """Rebuild the manual weighted ablation scores for plotting."""
     raw_score = 0.10 * x[:, 0] + 0.20 * x[:, 1] + 0.30 * x[:, 2] - 0.40 * x[:, 3]
     return _sigmoid(raw_score)
 
 
 def _reconstruct_logistic_scores(x: np.ndarray, coefficients: Dict[str, float], intercept: float) -> np.ndarray:
+    """Recreate detector probabilities from saved coefficients and intercept."""
     ordered_weights = np.array([coefficients[column] for column in coefficients.keys()], dtype=np.float64)
     return _sigmoid(x @ ordered_weights + intercept)
 
 
 def _extract_best_trials(baseline_report: Dict) -> Dict[str, Dict]:
+    """Extract the chosen baseline configuration for each baseline family."""
     best_trials: Dict[str, Dict] = {}
     for name, payload in baseline_report["baselines"].items():
         best_trials[name] = payload["best_trial"]
@@ -106,6 +138,7 @@ def _extract_best_trials(baseline_report: Dict) -> Dict[str, Dict]:
 
 
 def _plot_baseline_metric_bars(baseline_report: Dict, output_path: Path) -> None:
+    """Draw a compact baseline comparison for the most poster-friendly metrics."""
     best_trials = _extract_best_trials(baseline_report)
     metrics = ["auroc", "auprc", "f1", "accuracy"]
 
@@ -132,6 +165,7 @@ def _plot_baseline_metric_bars(baseline_report: Dict, output_path: Path) -> None
 
 
 def _plot_baseline_metric_heatmap(baseline_report: Dict, output_path: Path) -> None:
+    """Draw a denser report-style comparison across all key metrics."""
     best_trials = _extract_best_trials(baseline_report)
     ordered_names = [name for name in BASELINE_PLOT_ORDER if name in best_trials]
     metrics = ["auroc", "auprc", "accuracy", "precision", "recall", "f1"]
@@ -161,6 +195,7 @@ def _plot_baseline_metric_heatmap(baseline_report: Dict, output_path: Path) -> N
 
 
 def _plot_tuned_coefficients(tuned_report: Dict, output_path: Path) -> None:
+    """Show which features the tuned detector relies on and in which direction."""
     best_trial = tuned_report["best_trial"]
     coeffs = best_trial["coefficients"]
     features = list(coeffs.keys())
@@ -187,6 +222,7 @@ def _plot_tuned_coefficients(tuned_report: Dict, output_path: Path) -> None:
 
 
 def _plot_feature_distributions(rows: Sequence[Dict[str, str]], output_path: Path) -> None:
+    """Visualize how each standardized feature separates supported and unsupported cases."""
     fig, axes = plt.subplots(2, 2, figsize=(12, 8), constrained_layout=True)
     axes = axes.flatten()
 
@@ -210,6 +246,7 @@ def _plot_feature_distributions(rows: Sequence[Dict[str, str]], output_path: Pat
 
 
 def _plot_feature_correlation(rows: Sequence[Dict[str, str]], output_path: Path) -> None:
+    """Show redundancy or complementarity among the four features."""
     x, _ = _rows_to_xy(rows, FEATURE_COLUMNS)
     corr = np.corrcoef(x, rowvar=False)
 
@@ -237,6 +274,7 @@ def _plot_roc_pr_curves(
     test_rows: Sequence[Dict[str, str]],
     output_path: Path,
 ) -> None:
+    """Compare ranking behavior for the strongest baselines on the test set."""
     best_trials = _extract_best_trials(baseline_report)
     x_all, y_test = _rows_to_xy(test_rows, FEATURE_COLUMNS)
 
@@ -303,6 +341,7 @@ def _plot_roc_pr_curves(
 
 
 def _write_plot_guide(output_dir: Path, prefix: str) -> None:
+    """Write a short helper file explaining which generated plots are most useful."""
     lines = [
         "# Plot Guide",
         "",
@@ -333,6 +372,7 @@ def _write_plot_guide(output_dir: Path, prefix: str) -> None:
 
 
 def main() -> None:
+    """Generate the complete detector plot set from saved reports and CSV splits."""
     parser = argparse.ArgumentParser(description="Generate detector and baseline plots for the report and poster.")
     parser.add_argument("--baseline-report", required=True, help="Path to baseline report JSON")
     parser.add_argument("--tuned-report", required=True, help="Path to tuned logreg report JSON")

@@ -1,0 +1,105 @@
+{
+  "artifact_type": "frozen_detector_bundle",
+  "source": "wikiqa",
+  "feature_columns": [
+    "mean_token_nll",
+    "self_consistency_disagreement",
+    "semantic_entropy",
+    "groundedness_score"
+  ],
+  "detector": {
+    "type": "logistic_regression",
+    "coefficients": {
+      "mean_token_nll": -0.3388288259997837,
+      "self_consistency_disagreement": 0.16399777604599086,
+      "semantic_entropy": -0.05613460548823587,
+      "groundedness_score": -0.26474179114562596
+    },
+    "intercept": -1.324473523731605
+  },
+  "calibration": {
+    "method": "Isotonic regression",
+    "fit_parameters": {
+      "num_thresholds": 13,
+      "x_thresholds": [
+        0.06354390031232834,
+        0.0943267117769924,
+        0.09885764695347171,
+        0.17367147045418851,
+        0.17440168910805912,
+        0.1963892941211175,
+        0.19706930733504563,
+        0.22374298201420298,
+        0.2244614478200118,
+        0.3612726966678208,
+        0.3729030921278076,
+        0.4257129404289263,
+        0.5750031548273659
+      ],
+      "y_thresholds": [
+        0.0,
+        0.0,
+        0.022222222222222223,
+        0.022222222222222223,
+        0.14285714285714285,
+        0.14285714285714285,
+        0.16666666666666666,
+        0.16666666666666666,
+        0.3108108108108108,
+        0.3108108108108108,
+        0.42857142857142855,
+        0.42857142857142855,
+        1.0
+      ]
+    }
+  },
+  "abstention_policy": {
+    "selection_rule": "Choose the validation risk threshold that maximizes selective accuracy subject to the minimum coverage constraint.",
+    "minimum_coverage_constraint": 0.8,
+    "classification_threshold_for_metrics": 0.5,
+    "frozen_risk_threshold": 0.3108108108108108,
+    "answer_when_calibrated_risk_at_or_below": 0.3108108108108108,
+    "abstain_when_calibrated_risk_above": 0.3108108108108108,
+    "selected_validation_operating_point": {
+      "threshold": 0.3108108108108108,
+      "coverage": 0.958974358974359,
+      "abstention_rate": 0.04102564102564099,
+      "selective_risk": 0.18181818181818182,
+      "selective_accuracy": 0.8181818181818181
+    },
+    "test_operating_point_at_frozen_threshold": {
+      "threshold": 0.3108108108108108,
+      "coverage": 0.9642857142857143,
+      "abstention_rate": 0.0357142857142857,
+      "selective_risk": 0.24338624338624337,
+      "selective_accuracy": 0.7566137566137566
+    }
+  },
+  "standardization": {
+    "required": true,
+    "feature_stats": {
+      "mean_token_nll": {
+        "mean": 0.043229259324355854,
+        "std": 0.051491129423916954
+      },
+      "self_consistency_disagreement": {
+        "mean": 0.035545329843023825,
+        "std": 0.10463243412803754
+      },
+      "semantic_entropy": {
+        "mean": 0.21840860283158217,
+        "std": 0.36112920201163035
+      },
+      "groundedness_score": {
+        "mean": 0.8260748784028377,
+        "std": 0.28057832537819044
+      }
+    }
+  },
+  "provenance": {
+    "tuned_report_path": "results\\wikiqa\\wikiqa_1300_logreg_tuned_report.json",
+    "validation_split_path": "data\\wiki_qa\\splits\\wikiqa_1300_val_standardized.csv",
+    "test_split_path": "data\\wiki_qa\\splits\\wikiqa_1300_test_standardized.csv",
+    "standardization_stats_path": "data\\wiki_qa\\splits\\wikiqa_1300_standardization_stats.json"
+  }
+}

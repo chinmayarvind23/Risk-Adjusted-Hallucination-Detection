@@ -88,10 +88,22 @@
 
 #     return float(inconsistency_score)
 
+"""
+Compute a self-consistency disagreement score from multiple sampled answers.
+
+The current implementation uses sentence embeddings from a sentence-transformer.
+It treats the first answer as the served answer and asks how similar each of its
+sentences is to the best matching sentence in the other sampled answers.
+
+Higher disagreement means the sampled answers do not agree well, which is used
+as a proxy for higher hallucination risk.
+"""
+
 import numpy as np
 import nltk
 
 def split_sentences(text):
+    """Split text into sentences, with a simple fallback if punkt is unavailable."""
     try:
         return [s.strip() for s in nltk.sent_tokenize(text) if len(s.strip()) > 0]
     except LookupError:
@@ -105,6 +117,7 @@ def split_sentences(text):
 
 
 def self_consistency(sampled_answers, sbert_model, batch_size=32):
+    """Measure disagreement among sampled answers using sentence-level similarity."""
     if len(sampled_answers) < 2:
         return {
             "base_consistency_score": 1.0,
@@ -125,6 +138,8 @@ def self_consistency(sampled_answers, sbert_model, batch_size=32):
             "num_samples": len(sampled_answers),
         }
 
+    # Encode all sentences together so embedding quality is consistent and the
+    # runtime is lower than encoding sample by sample.
     all_sentences = base_sents + [s for sample in sample_sents for s in sample]
 
     embeddings = sbert_model.encode(
@@ -145,6 +160,9 @@ def self_consistency(sampled_answers, sbert_model, batch_size=32):
 
     sentence_scores = []
 
+    # For each sentence in the served answer, find the best matching sentence in
+    # every alternative answer. Averaging those maxima gives a practical
+    # agreement score for that sentence.
     for base_emb in base_embs:
         base_emb = base_emb.reshape(1, -1)
         per_sample_scores = []

@@ -1,5 +1,19 @@
 from __future__ import annotations
 
+"""
+Compute semantic entropy from multiple sampled answers.
+
+This file implements the main idea from semantic entropy style methods:
+
+1. sample several candidate answers
+2. cluster answers that mean the same thing
+3. estimate probability mass over semantic clusters
+4. measure entropy over those clusters
+
+Higher semantic entropy means the model spreads probability mass over several
+different meanings, which is a useful sign of uncertainty.
+"""
+
 import argparse
 import json
 import math
@@ -18,32 +32,25 @@ _NLI_CACHE: Dict[str, Tuple[AutoModelForSequenceClassification, AutoTokenizer, s
 DEFAULT_NLI_MODEL = "MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli"
 
 
-"""
-Setting device
-"""
 def _resolve_device(device: Optional[str] = None) -> str:
+    """Choose GPU when available unless a device is provided explicitly."""
     if device:
         return device
     return "cuda" if torch.cuda.is_available() else "cpu"
 
-"""
-Basic preprocessing on the result. Removes empty spaces from end and beginning
-"""
 def _normalize_answer(text: str) -> str:
+    """Light normalization used only for quick exact-match checks."""
     text = text.strip().lower()
     text = re.sub(r"\s+", " ", text)
     text = re.sub(r"[^\w\s]", "", text)
     return text
 
 
-"""
-Given a model_id/name and tokenizer_id/name, loads it and returns them in a tuple
-# TODO: Make the return signature consistent with load_mode_and_tokenizer function
-"""
 def _load_nli_model_and_tokenizer(
     model_name: str = DEFAULT_NLI_MODEL,
     device: Optional[str] = None,
 ) -> Tuple[AutoModelForSequenceClassification, AutoTokenizer, str]:
+    """Load and cache the NLI model used for semantic equivalence checks."""
     cache_key = f"{model_name}::{device or 'auto'}"
     if cache_key in _NLI_CACHE:
         return _NLI_CACHE[cache_key]
@@ -65,10 +72,8 @@ def _load_nli_model_and_tokenizer(
     return loaded
 
 
-"""
-TODO: Figure out what this does wrt to the pipeline
-"""
 def _extract_label_indices(model: AutoModelForSequenceClassification) -> Tuple[int, Optional[int]]:
+    """Locate entailment and contradiction label ids from the NLI config."""
     entailment_idx: Optional[int] = None
     contradiction_idx: Optional[int] = None
 
@@ -86,6 +91,7 @@ def _extract_label_indices(model: AutoModelForSequenceClassification) -> Tuple[i
 
 
 def _format_answer_for_entailment(question: str, answer: str) -> str:
+    """Wrap an answer with its question so entailment is judged in context."""
     return f"Question: {question}\nAnswer: {answer.strip()}"
 
 
@@ -96,6 +102,7 @@ def _predict_nli_probs(
     tokenizer: AutoTokenizer,
     device: str,
 ) -> torch.Tensor:
+    """Run one NLI comparison and return class probabilities."""
     encoded = tokenizer(
         premise,
         hypothesis,
@@ -119,6 +126,7 @@ def _bidirectional_entailment(
     device: str,
     entailment_threshold: float,
 ) -> Tuple[bool, Dict[str, float]]:
+    """Treat two answers as equivalent only if they entail each other both ways."""
     if _normalize_answer(answer_a) == _normalize_answer(answer_b):
         return True, {"forward_entailment": 1.0, "backward_entailment": 1.0}
 
@@ -163,6 +171,7 @@ def _cluster_semantic_variants(
     device: Optional[str] = None,
     entailment_threshold: float = 0.5,
 ) -> Tuple[List[List[int]], List[Dict[str, Any]]]:
+    """Greedily cluster sampled answers into semantic groups."""
     if entailment_model is None or entailment_tokenizer is None:
         entailment_model, entailment_tokenizer, resolved_device = _load_nli_model_and_tokenizer(
             model_name=entailment_model_name,
@@ -174,6 +183,8 @@ def _cluster_semantic_variants(
     clusters: List[List[int]] = []
     comparisons: List[Dict[str, Any]] = []
 
+    # Each new answer joins the first cluster whose representative is mutually
+    # entailed. Otherwise it starts a new semantic cluster.
     for idx, answer in enumerate(answers):
         placed = False
         for cluster in clusters:
@@ -247,11 +258,13 @@ def semantic_entropy(
     cluster_answers: List[List[str]] = [[k_sampled_answers[idx] for idx in cluster] for cluster in clusters]
 
     if log_probs_for_token_probabilities is None:
+        # Discrete fallback when answer log-probabilities are unavailable.
         cluster_probabilities = [len(cluster) / len(k_sampled_answers) for cluster in clusters]
         estimator = "discrete"
         raw_cluster_masses = cluster_probabilities[:]
         cluster_log_masses = [math.log(probability) for probability in cluster_probabilities]
     else:
+        # Rao-Blackwellized estimate using summed probability mass per semantic cluster.
         answer_log_probs = torch.tensor(log_probs_for_token_probabilities, dtype=torch.float64)
         cluster_log_masses = [
             float(torch.logsumexp(answer_log_probs[cluster], dim=0).item())

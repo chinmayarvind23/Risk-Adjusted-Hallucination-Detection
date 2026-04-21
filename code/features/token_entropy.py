@@ -1,5 +1,14 @@
 from __future__ import annotations
 
+"""
+Compute token-level uncertainty for the served answer.
+
+This feature is the local uncertainty signal. It prefers using token log
+probabilities returned during generation. If those are unavailable and a local
+causal language model is available, it can recompute token statistics directly
+from logits.
+"""
+
 from typing import Any, Dict, List, Optional, Sequence
 
 import torch
@@ -7,6 +16,7 @@ import torch.nn.functional as F
 
 
 def _safe_float(value: Any) -> Optional[float]:
+    """Convert a value to float when possible and otherwise return None."""
     if value is None:
         return None
     try:
@@ -34,6 +44,7 @@ def token_entropy(
       the realized answer tokens.
     """
     if token_logprobs:
+        # Preferred path. Use the exact token scores produced during generation.
         valid_logprobs = [float(lp) for lp in token_logprobs if lp is not None]
         if valid_logprobs:
             mean_logprob = sum(valid_logprobs) / len(valid_logprobs)
@@ -57,6 +68,8 @@ def token_entropy(
                 "source": "generator_logprobs",
             }
 
+    # If no generation-time scores exist, only local model inference can rebuild
+    # the token uncertainty information.
     if tokenizer is None or model is None or not answer:
         return {
             "mean_token_nll": None,

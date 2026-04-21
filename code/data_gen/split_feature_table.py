@@ -1,19 +1,39 @@
 from __future__ import annotations
 
+"""Split a flat feature table into train, validation, and test CSV files.
+
+The split happens after features are computed so every downstream detector step
+can operate on the same four-column feature table format.
+"""
+
 import argparse
 import csv
 import json
 import random
+import sys
 from pathlib import Path
 from typing import Dict, List
 
 
+def _set_csv_field_limit() -> None:
+    limit = sys.maxsize
+    while True:
+        try:
+            csv.field_size_limit(limit)
+            return
+        except OverflowError:
+            limit //= 10
+
+
 def _read_csv(path: Path) -> List[Dict[str, str]]:
+    """Read the flat feature table while allowing long text fields."""
+    _set_csv_field_limit()
     with path.open("r", encoding="utf-8", newline="") as handle:
         return list(csv.DictReader(handle))
 
 
 def _write_csv(path: Path, rows: List[Dict[str, str]], fieldnames: List[str]) -> None:
+    """Write one split back to CSV."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
@@ -22,6 +42,7 @@ def _write_csv(path: Path, rows: List[Dict[str, str]], fieldnames: List[str]) ->
 
 
 def _label_histogram(rows: List[Dict[str, str]], label_key: str = "judge_binary_label") -> Dict[str, int]:
+    """Summarize class balance for sanity checking after the split."""
     histogram: Dict[str, int] = {}
     for row in rows:
         value = row.get(label_key)
@@ -32,6 +53,7 @@ def _label_histogram(rows: List[Dict[str, str]], label_key: str = "judge_binary_
 
 
 def main() -> None:
+    """CLI entry point for creating train, validation, and test splits."""
     parser = argparse.ArgumentParser(description="Split a flat feature-table CSV into train/val/test CSVs.")
     parser.add_argument("--input", required=True, help="Input feature table CSV.")
     parser.add_argument("--output-dir", required=True, help="Directory for split CSVs.")

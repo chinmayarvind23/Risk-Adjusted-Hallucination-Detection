@@ -1,5 +1,17 @@
 from __future__ import annotations
 
+"""
+Compute groundedness by checking answer sentences against retrieved evidence.
+
+This is an evidence consistency feature. It breaks an answer into sentences,
+compares each sentence against chunks of the provided context with NLI, and
+aggregates the strongest support signal for each sentence.
+
+Higher groundedness means the answer looks better supported by the available
+evidence. Lower groundedness means the answer is more weakly supported or
+contradicted.
+"""
+
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import nltk
@@ -7,6 +19,7 @@ import torch
 
 
 def _sent_tokenize(text: str) -> List[str]:
+    """Split text into sentences, with a simple fallback when punkt is missing."""
     try:
         return [s.strip() for s in nltk.sent_tokenize(text) if s.strip()]
     except LookupError:
@@ -21,6 +34,7 @@ def _sent_tokenize(text: str) -> List[str]:
 
 
 def _extract_label_indices(model) -> Tuple[int, Optional[int], Optional[int]]:
+    """Read the entailment, contradiction, and neutral label ids from the NLI model."""
     entailment_idx: Optional[int] = None
     contradiction_idx: Optional[int] = None
     neutral_idx: Optional[int] = None
@@ -41,6 +55,7 @@ def _extract_label_indices(model) -> Tuple[int, Optional[int], Optional[int]]:
 
 
 def _chunk_evidence(text: str, max_chars: int = 1200) -> List[str]:
+    """Chunk long evidence text into smaller spans for NLI scoring."""
     sentences = _sent_tokenize(text)
     if not sentences:
         stripped = text.strip()
@@ -67,6 +82,7 @@ def _chunk_evidence(text: str, max_chars: int = 1200) -> List[str]:
 
 
 def _predict_probs(tokenizer, model, premise: str, hypothesis: str) -> torch.Tensor:
+    """Run one NLI forward pass and return class probabilities."""
     device = next(model.parameters()).device
     encoded = tokenizer(
         premise,
@@ -134,6 +150,8 @@ def evidence_consistency(tokenizer, model, context: str, answer: str) -> Dict[st
     entailment_idx, contradiction_idx, neutral_idx = _extract_label_indices(model)
     sentence_results: List[Dict[str, Any]] = []
 
+    # Each answer sentence is matched against all evidence chunks. We keep the
+    # chunk with the best entailment-minus-contradiction score.
     for sentence in answer_sentences:
         best_result: Optional[Dict[str, Any]] = None
         best_score = float("-inf")
@@ -198,6 +216,8 @@ def evidence_consistency(tokenizer, model, context: str, answer: str) -> Dict[st
     mean_entailment = sum(result["entailment"] for result in sentence_results) / total_sentences
     mean_contradiction = sum(result["contradiction"] for result in sentence_results) / total_sentences
     mean_neutral = sum(result["neutral"] for result in sentence_results) / total_sentences
+    # The continuous score is the main detector feature because it preserves
+    # more information than a hard sentence label alone.
     discrete_groundedness_score = entailed_fraction - contradicted_fraction
     continuous_groundedness_score = mean_entailment - mean_contradiction
 

@@ -1,13 +1,29 @@
 from __future__ import annotations
 
+"""
+Apply the final calibration method, build abstention curves, and save a frozen bundle.
+
+This is the final in-domain reliability script. It takes the tuned detector,
+fits a calibrator on validation only, and then:
+
+1. reports raw and calibrated metrics
+2. builds risk-coverage and accuracy-coverage curves
+3. chooses a validation operating point under a minimum coverage constraint
+4. freezes that threshold
+5. evaluates the frozen threshold on test
+6. writes a reusable bundle for later transfer experiments
+"""
+
 import argparse
 import csv
 import json
+import sys
 from pathlib import Path
 from typing import Dict, List, Sequence, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
+from sklearn.isotonic import IsotonicRegression
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     accuracy_score,
@@ -28,17 +44,49 @@ FEATURE_COLUMNS = [
 ]
 
 
+def _infer_source_name(prefix: str, tuned_report_path: Path, val_path: Path, test_path: Path) -> str:
+    """Infer a dataset name for saved reports and bundles."""
+    joined = " ".join(
+        [
+            prefix.lower(),
+            tuned_report_path.name.lower(),
+            str(val_path).lower(),
+            str(test_path).lower(),
+        ]
+    )
+    if "wikiqa" in joined or "wiki_qa" in joined:
+        return "wikiqa"
+    if "phantom" in joined:
+        return "phantom"
+    return "unknown"
+
+
+def _set_csv_field_limit() -> None:
+    """Allow large CSV fields such as retained context text."""
+    limit = sys.maxsize
+    while True:
+        try:
+            csv.field_size_limit(limit)
+            return
+        except OverflowError:
+            limit //= 10
+
+
 def _read_csv_rows(path: Path) -> List[Dict[str, str]]:
+    """Read a split CSV into memory."""
+    _set_csv_field_limit()
     with path.open("r", encoding="utf-8", newline="") as handle:
         return list(csv.DictReader(handle))
 
 
 def _load_json(path: Path) -> Dict:
+    """Load a JSON file produced by an earlier pipeline stage."""
     with path.open("r", encoding="utf-8") as handle:
         return json.load(handle)
 
 
 def _rows_to_xy(rows: Sequence[Dict[str, str]], feature_columns: Sequence[str]) -> Tuple[np.ndarray, np.ndarray]:
+    """Convert rows to the feature matrix and binary unsupported labels."""
     x = np.array(
         [[float(row[column]) for column in feature_columns] for row in rows],
         dtype=np.float64,
@@ -48,22 +96,26 @@ def _rows_to_xy(rows: Sequence[Dict[str, str]], feature_columns: Sequence[str]) 
 
 
 def _sigmoid(z: np.ndarray) -> np.ndarray:
+    """Convert detector logits to raw unsupported probabilities."""
     clipped = np.clip(z, -50.0, 50.0)
     return 1.0 / (1.0 + np.exp(-clipped))
 
 
 def _nll(y_true: np.ndarray, probs: np.ndarray) -> float:
+    """Negative log likelihood of the risk estimates."""
     probs = np.clip(probs, 1e-12, 1.0 - 1e-12)
     return float(-(y_true * np.log(probs) + (1.0 - y_true) * np.log(1.0 - probs)).mean())
 
 
 def _safe_auroc(y_true: np.ndarray, y_score: np.ndarray) -> float | None:
+    """Return AUROC when defined."""
     if len(set(y_true.tolist())) < 2:
         return None
     return float(roc_auc_score(y_true, y_score))
 
 
 def _classification_metrics(y_true: np.ndarray, y_score: np.ndarray, threshold: float) -> Dict[str, float | None]:
+    """Compute classification metrics after thresholding calibrated risk."""
     y_pred = (y_score >= threshold).astype(int)
     return {
         "auroc": _safe_auroc(y_true, y_score),
@@ -77,6 +129,7 @@ def _classification_metrics(y_true: np.ndarray, y_score: np.ndarray, threshold: 
 
 
 def _expected_calibration_error(y_true: np.ndarray, probs: np.ndarray, n_bins: int = 10) -> float:
+    """Compute bin-based ECE."""
     bin_edges = np.linspace(0.0, 1.0, n_bins + 1)
     ece = 0.0
     for left, right in zip(bin_edges[:-1], bin_edges[1:]):
@@ -93,12 +146,36 @@ def _expected_calibration_error(y_true: np.ndarray, probs: np.ndarray, n_bins: i
 
 
 def _fit_platt_scaling(val_logits: np.ndarray, y_val: np.ndarray) -> LogisticRegression:
+    """Fit Platt scaling on validation logits."""
     model = LogisticRegression(solver="lbfgs", random_state=42, max_iter=2000)
     model.fit(val_logits.reshape(-1, 1), y_val)
     return model
 
 
+def _fit_isotonic_regression(raw_val_probs: np.ndarray, y_val: np.ndarray) -> IsotonicRegression:
+    """Fit isotonic regression on validation probabilities."""
+    model = IsotonicRegression(out_of_bounds="clip")
+    model.fit(raw_val_probs, y_val)
+    return model
+
+
+def _collect_calibration_block(
+    method_name: str,
+    fit_payload: Dict[str, float | int],
+    raw_metrics: Dict[str, Dict],
+    calibrated_metrics: Dict[str, Dict],
+) -> Dict:
+    """Build the JSON block describing one selected calibration method."""
+    return {
+        "method": method_name,
+        "fit_parameters": fit_payload,
+        "raw_metrics": raw_metrics,
+        "calibrated_metrics": calibrated_metrics,
+    }
+
+
 def _build_curve_from_risk(y_true: np.ndarray, risk_scores: np.ndarray) -> List[Dict[str, float]]:
+    """Sweep accepted-risk thresholds to build selective prediction curves."""
     thresholds = sorted(set(float(score) for score in risk_scores.tolist()))
     thresholds = [0.0] + thresholds + [1.0]
 
@@ -134,6 +211,7 @@ def _build_curve_from_risk(y_true: np.ndarray, risk_scores: np.ndarray) -> List[
 
 
 def _select_operating_point(curve: Sequence[Dict[str, float]], min_coverage: float) -> Dict[str, float]:
+    """Choose the highest-accuracy validation point that meets minimum coverage."""
     eligible = [point for point in curve if point["coverage"] >= min_coverage]
     if not eligible:
         eligible = list(curve)
@@ -150,6 +228,7 @@ def _select_operating_point(curve: Sequence[Dict[str, float]], min_coverage: flo
 
 
 def _plot_reliability_diagram(y_true: np.ndarray, probs: np.ndarray, output_path: Path, title: str) -> None:
+    """Draw the final reliability diagram for one split."""
     n_bins = 10
     bin_edges = np.linspace(0.0, 1.0, n_bins + 1)
     bin_centers = []
@@ -189,6 +268,7 @@ def _plot_coverage_curves(
     output_path_risk: Path,
     output_path_acc: Path,
 ) -> None:
+    """Draw the selective risk and selective accuracy curves."""
     val_cov = [point["coverage"] for point in val_curve]
     val_risk = [point["selective_risk"] for point in val_curve]
     val_acc = [point["selective_accuracy"] for point in val_curve]
@@ -242,8 +322,8 @@ def _build_frozen_bundle(
     feature_columns: Sequence[str],
     detector_coefficients: Dict[str, float],
     detector_intercept: float,
-    platt_coef: float,
-    platt_intercept: float,
+    calibration_method: str,
+    calibration_fit_parameters: Dict[str, float | int],
     min_coverage: float,
     classification_threshold: float,
     frozen_threshold: float,
@@ -255,6 +335,7 @@ def _build_frozen_bundle(
     val_path: Path,
     test_path: Path,
 ) -> Dict:
+    """Package the trained detector, calibrator, and abstention policy for reuse."""
     bundle = {
         "artifact_type": "frozen_detector_bundle",
         "source": source,
@@ -265,11 +346,8 @@ def _build_frozen_bundle(
             "intercept": detector_intercept,
         },
         "calibration": {
-            "method": "Platt scaling",
-            "fit_parameters": {
-                "coef": platt_coef,
-                "intercept": platt_intercept,
-            },
+            "method": calibration_method,
+            "fit_parameters": calibration_fit_parameters,
         },
         "abstention_policy": {
             "selection_rule": selection_rule,
@@ -298,7 +376,8 @@ def _build_frozen_bundle(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Calibrate a tuned detector with Platt scaling and evaluate abstention.")
+    """Run final calibration and abstention analysis and save all outputs."""
+    parser = argparse.ArgumentParser(description="Calibrate a tuned detector and evaluate abstention.")
     parser.add_argument("--tuned-report", required=True, help="Path to tuned logreg report JSON")
     parser.add_argument("--val", required=True, help="Standardized validation CSV")
     parser.add_argument("--test", required=True, help="Standardized test CSV")
@@ -309,6 +388,17 @@ def main() -> None:
         help="Optional JSON file with frozen feature standardization stats to embed in the saved bundle.",
     )
     parser.add_argument("--prefix", default="phantom_4000")
+    parser.add_argument(
+        "--source-name",
+        default=None,
+        help="Optional dataset name to save in the report and frozen bundle. If omitted, the script infers it from paths and prefix.",
+    )
+    parser.add_argument(
+        "--calibration-method",
+        choices=["platt", "isotonic"],
+        default="platt",
+        help="Calibration method to use for the final calibrated risk score. Default keeps the current PHANTOM behavior.",
+    )
     parser.add_argument(
         "--min-coverage",
         type=float,
@@ -327,6 +417,7 @@ def main() -> None:
     tuned_report_path = Path(args.tuned_report)
     val_path = Path(args.val)
     test_path = Path(args.test)
+    source_name = args.source_name or _infer_source_name(args.prefix, tuned_report_path, val_path, test_path)
     best_trial = tuned_report["best_trial"]
     coefficients = best_trial["coefficients"]
     intercept = float(best_trial["intercept"])
@@ -350,9 +441,27 @@ def main() -> None:
     raw_val_probs = _sigmoid(val_logits)
     raw_test_probs = _sigmoid(test_logits)
 
-    platt_model = _fit_platt_scaling(val_logits, y_val)
-    calibrated_val_probs = platt_model.predict_proba(val_logits.reshape(-1, 1))[:, 1]
-    calibrated_test_probs = platt_model.predict_proba(test_logits.reshape(-1, 1))[:, 1]
+    # PHANTOM currently keeps Platt as the final method. WikiQA can switch to
+    # isotonic when the comparison stage shows it calibrates better.
+    calibration_method_name = "Platt scaling" if args.calibration_method == "platt" else "Isotonic regression"
+    calibration_fit_parameters: Dict[str, float | int]
+    if args.calibration_method == "platt":
+        platt_model = _fit_platt_scaling(val_logits, y_val)
+        calibrated_val_probs = platt_model.predict_proba(val_logits.reshape(-1, 1))[:, 1]
+        calibrated_test_probs = platt_model.predict_proba(test_logits.reshape(-1, 1))[:, 1]
+        calibration_fit_parameters = {
+            "coef": float(platt_model.coef_[0][0]),
+            "intercept": float(platt_model.intercept_[0]),
+        }
+    else:
+        isotonic_model = _fit_isotonic_regression(raw_val_probs, y_val)
+        calibrated_val_probs = np.clip(isotonic_model.predict(raw_val_probs), 0.0, 1.0)
+        calibrated_test_probs = np.clip(isotonic_model.predict(raw_test_probs), 0.0, 1.0)
+        calibration_fit_parameters = {
+            "num_thresholds": int(len(isotonic_model.X_thresholds_)),
+            "x_thresholds": [float(value) for value in isotonic_model.X_thresholds_.tolist()],
+            "y_thresholds": [float(value) for value in isotonic_model.y_thresholds_.tolist()],
+        }
 
     raw_metrics = {
         "val": {
@@ -384,6 +493,8 @@ def main() -> None:
         },
     }
 
+    # The calibrated risk is the quantity used for abstention. Lower risk means
+    # the system keeps the answer. Higher risk means the system abstains.
     val_curve = _build_curve_from_risk(y_val, calibrated_val_probs)
     test_curve = _build_curve_from_risk(y_test, calibrated_test_probs)
     operating_point = _select_operating_point(val_curve, min_coverage=args.min_coverage)
@@ -395,7 +506,7 @@ def main() -> None:
     )
 
     report = {
-        "source": "phantom",
+        "source": source_name,
         "feature_columns": feature_columns,
         "min_coverage_constraint": args.min_coverage,
         "classification_threshold_for_metrics": args.classification_threshold,
@@ -403,15 +514,12 @@ def main() -> None:
             "coefficients": coefficients,
             "intercept": intercept,
         },
-        "platt_scaling": {
-            "method": "Platt scaling",
-            "fit_parameters": {
-                "coef": float(platt_model.coef_[0][0]),
-                "intercept": float(platt_model.intercept_[0]),
-            },
-            "raw_metrics": raw_metrics,
-            "calibrated_metrics": calibrated_metrics,
-        },
+        "selected_calibration": _collect_calibration_block(
+            calibration_method_name,
+            calibration_fit_parameters,
+            raw_metrics,
+            calibrated_metrics,
+        ),
         "abstention": {
             "selection_rule": selection_rule,
             "frozen_threshold": frozen_threshold,
@@ -421,6 +529,10 @@ def main() -> None:
             "test_curve": test_curve,
         },
     }
+    if args.calibration_method == "platt":
+        report["platt_scaling"] = report["selected_calibration"]
+    else:
+        report["isotonic_regression"] = report["selected_calibration"]
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -433,8 +545,8 @@ def main() -> None:
         feature_columns=feature_columns,
         detector_coefficients=coefficients,
         detector_intercept=intercept,
-        platt_coef=float(platt_model.coef_[0][0]),
-        platt_intercept=float(platt_model.intercept_[0]),
+        calibration_method=calibration_method_name,
+        calibration_fit_parameters=calibration_fit_parameters,
         min_coverage=args.min_coverage,
         classification_threshold=args.classification_threshold,
         frozen_threshold=frozen_threshold,
@@ -472,27 +584,23 @@ def main() -> None:
 
     print(f"Saved calibration and abstention report to: {report_path}")
     print(f"Saved frozen detector bundle to: {bundle_path}")
-    print(
-        json.dumps(
-            {
-                "platt_scaling_coef": float(platt_model.coef_[0][0]),
-                "platt_scaling_intercept": float(platt_model.intercept_[0]),
-                "validation_ece_before": raw_metrics["val"]["ece"],
-                "validation_ece_after": calibrated_metrics["val"]["ece"],
-                "validation_brier_before": raw_metrics["val"]["brier"],
-                "validation_brier_after": calibrated_metrics["val"]["brier"],
-                "test_ece_before": raw_metrics["test"]["ece"],
-                "test_ece_after": calibrated_metrics["test"]["ece"],
-                "test_brier_before": raw_metrics["test"]["brier"],
-                "test_brier_after": calibrated_metrics["test"]["brier"],
-                "frozen_threshold": frozen_threshold,
-                "frozen_bundle_path": str(bundle_path),
-                "selected_validation_operating_point": operating_point,
-                "test_operating_point_at_frozen_threshold": selected_test_point,
-            },
-            indent=2,
-        )
-    )
+    summary = {
+        "calibration_method": calibration_method_name,
+        "calibration_fit_parameters": calibration_fit_parameters,
+        "validation_ece_before": raw_metrics["val"]["ece"],
+        "validation_ece_after": calibrated_metrics["val"]["ece"],
+        "validation_brier_before": raw_metrics["val"]["brier"],
+        "validation_brier_after": calibrated_metrics["val"]["brier"],
+        "test_ece_before": raw_metrics["test"]["ece"],
+        "test_ece_after": calibrated_metrics["test"]["ece"],
+        "test_brier_before": raw_metrics["test"]["brier"],
+        "test_brier_after": calibrated_metrics["test"]["brier"],
+        "frozen_threshold": frozen_threshold,
+        "frozen_bundle_path": str(bundle_path),
+        "selected_validation_operating_point": operating_point,
+        "test_operating_point_at_frozen_threshold": selected_test_point,
+    }
+    print(json.dumps(summary, indent=2))
 
 
 if __name__ == "__main__":

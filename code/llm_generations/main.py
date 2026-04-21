@@ -1,10 +1,28 @@
 from __future__ import annotations
 
+"""
+Generate answers and compute all detector features from raw dataset examples.
+
+This is the earliest pipeline stage. For each example it can:
+
+1. generate multiple answers
+2. keep one served answer
+3. compute token uncertainty
+4. compute self-consistency disagreement
+5. compute semantic entropy
+6. compute evidence consistency or groundedness
+7. optionally ask a judge model for a binary unsupported label
+
+The saved JSON files are then flattened into feature tables for detector
+training, calibration, and abstention.
+"""
+
 import argparse
 import json
 import re
 import sys
 import time
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
@@ -44,11 +62,13 @@ DEFAULT_K = 5
 
 
 def _ensure_data_dirs() -> None:
+    """Create the dataset output directories when they do not exist yet."""
     PHANTOM_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     WIKIQA_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _resolve_device(device: Optional[str] = None) -> str:
+    """Choose a computation device for local model inference."""
     if device:
         return device
     return "cuda" if torch.cuda.is_available() else "cpu"
@@ -64,6 +84,7 @@ def _ollama_chat(
     seed: Optional[int],
     ollama_url: str,
 ) -> Dict[str, Any]:
+    """Send one non-streaming chat request to the local Ollama server."""
     payload: Dict[str, Any] = {
         "model": model,
         "messages": messages,
@@ -93,6 +114,7 @@ def _ollama_chat(
 
 
 def _clean_generated_answer(text: str) -> str:
+    """Remove extra wrapper text and hidden thinking tags from model output."""
     cleaned = text.strip()
     cleaned = re.sub(r"(?is)<think>.*?</think>", "", cleaned).strip()
     cleaned = re.sub(r"(?im)^\s*(final answer|answer)\s*:\s*", "", cleaned).strip()
@@ -100,6 +122,7 @@ def _clean_generated_answer(text: str) -> str:
 
 
 def build_generation_messages(question: str, context: str) -> List[Dict[str, str]]:
+    """Build the answer-generation prompt for grounded QA."""
     return [
         {
             "role": "system",
@@ -117,6 +140,7 @@ def build_generation_messages(question: str, context: str) -> List[Dict[str, str
 
 
 def build_judge_messages(question: str, context: str, answer: str) -> List[Dict[str, str]]:
+    """Build the prompt for the hallucination judge model."""
     return [
         {
             "role": "system",
@@ -137,6 +161,7 @@ def build_judge_messages(question: str, context: str, answer: str) -> List[Dict[
 
 
 def build_judge_repair_messages(raw_judge_output: str) -> List[Dict[str, str]]:
+    """Build a repair prompt when the judge did not return valid JSON."""
     return [
         {
             "role": "system",
@@ -155,6 +180,7 @@ def build_judge_repair_messages(raw_judge_output: str) -> List[Dict[str, str]]:
 
 
 def _extract_json_object(text: str) -> Dict[str, Any]:
+    """Recover a JSON object from judge output that may contain extra text."""
     stripped = text.strip()
     try:
         parsed = json.loads(stripped)
@@ -202,6 +228,7 @@ def _extract_json_object(text: str) -> Dict[str, Any]:
 
 
 def _normalize_binary_judge_label(parsed: Dict[str, Any]) -> int:
+    """Map judge outputs into the project-wide 0 supported / 1 unsupported format."""
     value = parsed.get("binary_label")
     if isinstance(value, bool):
         return int(value)
@@ -225,6 +252,7 @@ def _normalize_binary_judge_label(parsed: Dict[str, Any]) -> int:
 
 
 def _extract_binary_label_from_text(text: str) -> Optional[int]:
+    """Fallback pattern matching when judge JSON repair still fails."""
     binary_match = re.search(r'"binary_label"\s*:\s*([01])', text)
     if binary_match:
         return int(binary_match.group(1))
@@ -248,6 +276,7 @@ def _extract_binary_label_from_text(text: str) -> Optional[int]:
 
 
 def _normalize_binary_dataset_label(label: Any) -> Optional[int]:
+    """Normalize source dataset labels into the same binary convention."""
     if label is None:
         return None
     if isinstance(label, bool):
@@ -266,6 +295,7 @@ def _load_model_and_tokenizer(
     model_name: str,
     device: Optional[str] = None,
 ) -> Tuple[AutoModelForCausalLM, AutoTokenizer, str]:
+    """Load a local causal language model for generation without Ollama."""
     resolved_device = _resolve_device(device)
     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
     model = AutoModelForCausalLM.from_pretrained(
@@ -286,6 +316,7 @@ def _load_nli_resources(
     model_name: str = DEFAULT_NLI_MODEL,
     device: Optional[str] = None,
 ) -> Tuple[AutoModelForSequenceClassification, AutoTokenizer, str]:
+    """Load the NLI model used by the groundedness feature."""
     resolved_device = _resolve_device(device)
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForSequenceClassification.from_pretrained(
@@ -300,12 +331,14 @@ def _load_nli_resources(
 
 
 def _load_self_consistency_model(device: Optional[str] = None):
+    """Load the sentence embedding model used by self-consistency."""
     from sentence_transformers import SentenceTransformer
 
     return SentenceTransformer(DEFAULT_SELF_CONSISTENCY_MODEL, device=_resolve_device(device))
 
 
 def _parse_ollama_logprobs(response: Dict[str, Any]) -> Tuple[List[float], List[Dict[str, Any]]]:
+    """Extract token-level logprob details from an Ollama chat response."""
     raw_logprobs = response.get("logprobs") or []
     token_logprobs: List[float] = []
     token_details: List[Dict[str, Any]] = []
@@ -338,6 +371,7 @@ def generate_k_answers_via_api(
     seed_start: int,
     ollama_url: str,
 ) -> Dict[str, Any]:
+    """Sample k answers through Ollama and keep token-level scoring details."""
     messages = build_generation_messages(question=question, context=context)
 
     answers: List[str] = []
@@ -391,6 +425,7 @@ def generate_k_answers_locally(
     top_k: int,
     seed_start: int,
 ) -> Dict[str, Any]:
+    """Sample k answers from a local Hugging Face causal LM."""
     prompt = f"Context:\n{context}\n\nQuestion:\n{question}\n\nAnswer:"
     inputs = tokenizer(prompt, return_tensors="pt").to(next(model.parameters()).device)
     prompt_length = inputs["input_ids"].shape[1]
@@ -464,6 +499,7 @@ def generate_gt(
     ollama_url: str,
     max_tokens: int = 200,
 ) -> Dict[str, Any]:
+    """Ask the judge model whether the served answer is supported by the context."""
     response = _ollama_chat(
         model=big_model,
         messages=build_judge_messages(question=question, context=context, answer=our_answer),
@@ -515,6 +551,7 @@ def generate_gt(
 
 
 def load_jsonl_dataset(path: Path, dataset_name: str, num_rows: int, start_idx: int = 0) -> Dataset:
+    """Load and normalize raw JSONL examples for PHANTOM or WikiQA."""
     rows: List[Dict[str, Any]] = []
     with path.open("r", encoding="utf-8") as handle:
         kept_idx = 0
@@ -556,6 +593,7 @@ def load_jsonl_dataset(path: Path, dataset_name: str, num_rows: int, start_idx: 
 
 
 def _default_data_file_for_dataset(dataset_name: str) -> Path:
+    """Return the default raw-data file path for a chosen dataset."""
     if dataset_name == "phantom":
         return DEFAULT_PHANTOM_LOCAL_FILE
     if dataset_name == "wikiqa":
@@ -564,6 +602,7 @@ def _default_data_file_for_dataset(dataset_name: str) -> Path:
 
 
 def _default_output_file_for_dataset(dataset_name: str, model_name: str, num_rows: int, k: int) -> Path:
+    """Construct the default feature JSON path for one generation run."""
     sanitized_model_name = model_name.replace("/", "_").replace(":", "_")
     if dataset_name == "phantom":
         return PHANTOM_OUTPUT_DIR / f"{sanitized_model_name}_k{k}_phantom_{num_rows}_features.json"
@@ -571,6 +610,10 @@ def _default_output_file_for_dataset(dataset_name: str, model_name: str, num_row
 
 
 def make_api_call_to_wikimedia(title: str) -> str:
+    """Fetch a Wikipedia page extract.
+
+    This helper is currently optional and not part of the main pipeline.
+    """
     headers = {"User-Agent": "Risk-Adjusted-Hallucinations"}
     params = {
         "action": "query",
@@ -580,14 +623,14 @@ def make_api_call_to_wikimedia(title: str) -> str:
         "format": "json",
     }
     try:
-        response = requests.get(
-            "https://en.wikipedia.org/w/api.php",
-            params=params,
+        query = urllib.parse.urlencode(params)
+        request = urllib.request.Request(
+            f"https://en.wikipedia.org/w/api.php?{query}",
             headers=headers,
-            timeout=20,
+            method="GET",
         )
-        response.raise_for_status()
-        data = response.json()
+        with urllib.request.urlopen(request, timeout=20) as response:
+            data = json.loads(response.read().decode("utf-8"))
         pages = data["query"]["pages"]
         page = next(iter(pages.values()))
         return page.get("extract", "")
@@ -596,6 +639,7 @@ def make_api_call_to_wikimedia(title: str) -> str:
 
 
 def summarize_results(records: Sequence[Dict[str, Any]], elapsed_seconds: Optional[float] = None) -> Dict[str, Any]:
+    """Summarize one completed feature-generation run."""
     if not records:
         summary: Dict[str, Any] = {"num_examples": 0}
         if elapsed_seconds is not None:
@@ -660,6 +704,7 @@ def summarize_results(records: Sequence[Dict[str, Any]], elapsed_seconds: Option
 
 
 def _build_arg_parser() -> argparse.ArgumentParser:
+    """Create the CLI used to run feature generation."""
     parser = argparse.ArgumentParser(description="Generate PHANTOM or WikiQA answers and compute all four features.")
     parser.add_argument("--dataset", choices=["phantom", "wikiqa"], required=True)
     parser.add_argument("--data-file", default=None)
@@ -683,10 +728,12 @@ def _build_arg_parser() -> argparse.ArgumentParser:
 
 
 def _partial_file_for_output(output_file: Path) -> Path:
+    """Choose the partial-save path used for resumable generation."""
     return output_file.with_name(f"{output_file.stem}_partial.jsonl")
 
 
 def _load_partial_records(partial_file: Path) -> List[Dict[str, Any]]:
+    """Resume from previously written partial records when available."""
     if not partial_file.exists():
         return []
     records: List[Dict[str, Any]] = []
@@ -699,6 +746,7 @@ def _load_partial_records(partial_file: Path) -> List[Dict[str, Any]]:
 
 
 def _append_partial_record(partial_file: Path, record: Dict[str, Any]) -> None:
+    """Append one completed example to the partial JSONL checkpoint file."""
     partial_file.parent.mkdir(parents=True, exist_ok=True)
     with partial_file.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(record, ensure_ascii=False))
@@ -706,6 +754,7 @@ def _append_partial_record(partial_file: Path, record: Dict[str, Any]) -> None:
 
 
 def main() -> None:
+    """Run the full answer generation and feature extraction pipeline."""
     args = _build_arg_parser().parse_args()
     _ensure_data_dirs()
     start_time = time.perf_counter()
@@ -727,6 +776,7 @@ def main() -> None:
         start_idx=args.start_idx,
     )
 
+    # Load shared feature models once before the main loop.
     evidence_model, evidence_tokenizer, _ = _load_nli_resources(device=args.device)
     self_consistency_model = _load_self_consistency_model(device=args.device)
 
@@ -820,6 +870,8 @@ def main() -> None:
             sbert_model=self_consistency_model,
         )
 
+        # Each record keeps both the raw generation outputs and the derived
+        # features so downstream stages can audit the full pipeline.
         record: Dict[str, Any] = {
             "example_id": row["example_id"],
             "dataset_name": row["dataset_name"],

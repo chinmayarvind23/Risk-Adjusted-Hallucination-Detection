@@ -1,8 +1,24 @@
 from __future__ import annotations
 
+"""
+Compare post-hoc calibration methods for a frozen detector.
+
+The detector weights are learned first. This script does not retrain the
+detector. Instead, it:
+
+1. Reconstructs raw detector scores on validation and test.
+2. Fits calibration methods on validation only.
+3. Applies those fitted calibrators to both validation and test.
+4. Reports ECE, Brier score, and NLL for side-by-side comparison.
+
+This follows the standard setup where calibration is a separate stage after
+model fitting.
+"""
+
 import argparse
 import csv
 import json
+import sys
 from pathlib import Path
 from typing import Dict, List, Sequence, Tuple
 
@@ -13,17 +29,32 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import brier_score_loss
 
 
+def _set_csv_field_limit() -> None:
+    """Allow long CSV text fields."""
+    limit = sys.maxsize
+    while True:
+        try:
+            csv.field_size_limit(limit)
+            return
+        except OverflowError:
+            limit //= 10
+
+
 def _read_csv_rows(path: Path) -> List[Dict[str, str]]:
+    """Read a CSV split into a list of dictionaries."""
+    _set_csv_field_limit()
     with path.open("r", encoding="utf-8", newline="") as handle:
         return list(csv.DictReader(handle))
 
 
 def _load_json(path: Path) -> Dict:
+    """Load a JSON report produced earlier in the pipeline."""
     with path.open("r", encoding="utf-8") as handle:
         return json.load(handle)
 
 
 def _rows_to_xy(rows: Sequence[Dict[str, str]], feature_columns: Sequence[str]) -> Tuple[np.ndarray, np.ndarray]:
+    """Convert rows into a numeric feature matrix and binary labels."""
     x = np.array(
         [[float(row[column]) for column in feature_columns] for row in rows],
         dtype=np.float64,
@@ -33,16 +64,19 @@ def _rows_to_xy(rows: Sequence[Dict[str, str]], feature_columns: Sequence[str]) 
 
 
 def _sigmoid(z: np.ndarray) -> np.ndarray:
+    """Convert detector logits into raw unsupported probabilities."""
     clipped = np.clip(z, -50.0, 50.0)
     return 1.0 / (1.0 + np.exp(-clipped))
 
 
 def _nll(y_true: np.ndarray, probs: np.ndarray) -> float:
+    """Negative log likelihood of the probability estimates."""
     probs = np.clip(probs, 1e-12, 1.0 - 1e-12)
     return float(-(y_true * np.log(probs) + (1.0 - y_true) * np.log(1.0 - probs)).mean())
 
 
 def _expected_calibration_error(y_true: np.ndarray, probs: np.ndarray, n_bins: int = 10) -> float:
+    """Compute the usual bin-based expected calibration error."""
     bin_edges = np.linspace(0.0, 1.0, n_bins + 1)
     ece = 0.0
     for left, right in zip(bin_edges[:-1], bin_edges[1:]):
@@ -59,6 +93,7 @@ def _expected_calibration_error(y_true: np.ndarray, probs: np.ndarray, n_bins: i
 
 
 def _fit_temperature(val_logits: np.ndarray, y_val: np.ndarray) -> Dict[str, float]:
+    """Fit temperature scaling by a simple grid search on validation NLL."""
     coarse_grid = np.exp(np.linspace(np.log(0.05), np.log(10.0), 600))
     coarse_losses = []
     for temp in coarse_grid:
@@ -81,6 +116,7 @@ def _fit_temperature(val_logits: np.ndarray, y_val: np.ndarray) -> Dict[str, flo
 
 
 def _collect_metrics(y_true: np.ndarray, probs: np.ndarray) -> Dict[str, float]:
+    """Bundle the calibration metrics used to choose a method."""
     return {
         "ece": _expected_calibration_error(y_true, probs),
         "brier": float(brier_score_loss(y_true, probs)),
@@ -110,6 +146,7 @@ def _plot_reliability_comparison(
     output_path: Path,
     title: str,
 ) -> None:
+    """Draw one reliability comparison plot for several calibration methods."""
     colors = {
         "raw": "#666666",
         "temperature_scaling": "#0f4c81",
@@ -144,6 +181,7 @@ def _plot_reliability_comparison(
 
 
 def main() -> None:
+    """Fit calibration methods on validation and compare them on validation and test."""
     parser = argparse.ArgumentParser(description="Compare calibration methods on validation only and evaluate on test.")
     parser.add_argument("--tuned-report", required=True, help="Path to tuned logreg report JSON")
     parser.add_argument("--val", required=True, help="Standardized validation CSV")
@@ -175,11 +213,13 @@ def main() -> None:
     temp_val_probs = _sigmoid(val_logits / temperature)
     temp_test_probs = _sigmoid(test_logits / temperature)
 
+    # Platt scaling learns a one-dimensional logistic regression on detector logits.
     platt = LogisticRegression(solver="lbfgs", random_state=42, max_iter=2000)
     platt.fit(val_logits.reshape(-1, 1), y_val)
     platt_val_probs = platt.predict_proba(val_logits.reshape(-1, 1))[:, 1]
     platt_test_probs = platt.predict_proba(test_logits.reshape(-1, 1))[:, 1]
 
+    # Isotonic regression is more flexible but can overfit if validation is small.
     isotonic = IsotonicRegression(out_of_bounds="clip")
     isotonic.fit(raw_val_probs, y_val)
     iso_val_probs = np.clip(isotonic.predict(raw_val_probs), 0.0, 1.0)

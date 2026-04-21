@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+"""Download and prepare local PHANTOM or WikiQA subsets.
+
+This script is the data intake step. It fetches raw examples, optionally
+retrieves Wikipedia context for WikiQA, and writes simple JSONL files that the
+generation pipeline can read later.
+"""
+
 import argparse
 import json
 import os
@@ -42,12 +49,14 @@ DEFAULT_NUM_ROWS = 100
 
 
 def _ensure_data_dirs() -> None:
+    """Create the expected local data directories if they do not exist yet."""
     PHANTOM_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     WIKIQA_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     HF_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _load_local_env(env_path: Path = PROJECT_ROOT / ".env") -> None:
+    """Load simple KEY=VALUE pairs from a local .env file when present."""
     if not env_path.exists():
         return
 
@@ -63,6 +72,7 @@ def _load_local_env(env_path: Path = PROJECT_ROOT / ".env") -> None:
 
 
 def save_jsonl(rows: Iterable[dict], path: Path) -> None:
+    """Write iterable rows to JSONL so later stages can stream them easily."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as handle:
         for row in rows:
@@ -74,6 +84,7 @@ def load_phantom_dataset(
     data_files: List[str] | None = None,
     num_rows: int = DEFAULT_NUM_ROWS,
 ) -> Dataset:
+    """Load a de-duplicated PHANTOM subset from the Hugging Face dataset repo."""
     _ensure_data_dirs()
     if data_files is None:
         data_files = DEFAULT_PHANTOM_FILES
@@ -140,6 +151,7 @@ def download_wikiqa_dataset(
     dataset_repo: str = DEFAULT_WIKIQA_REPO,
     split: str = "train",
 ) -> Dataset:
+    """Download a WikiQA split through the datasets library."""
     _ensure_data_dirs()
     dataset = load_dataset(
         dataset_repo,
@@ -150,6 +162,11 @@ def download_wikiqa_dataset(
 
 
 def make_api_call_to_wikimedia(title: str) -> str:
+    """Fetch plain-text Wikipedia content for one page title.
+
+    This is used to attach evidence context to WikiQA questions so groundedness
+    features can be computed later.
+    """
     if not str(title or "").strip():
         return ""
 
@@ -186,6 +203,7 @@ def process_wikiqa_with_retrieval(
     split: str = "train",
     num_rows: int = DEFAULT_NUM_ROWS,
 ) -> List[dict]:
+    """Attach retrieved Wikipedia context to WikiQA rows and keep unique prompts."""
     wikiqa = download_wikiqa_dataset(split=split)
     retrieved_rows: List[dict] = []
     seen_prompt_keys: Set[Tuple[str, str]] = set()
@@ -226,6 +244,7 @@ def process_wikiqa_with_retrieval(
 
 
 def _build_arg_parser() -> argparse.ArgumentParser:
+    """Define CLI arguments for the dataset preparation step."""
     parser = argparse.ArgumentParser(description="Prepare PHANTOM or WikiQA local jsonl subsets.")
     parser.add_argument("--dataset", choices=["phantom", "wikiqa"], required=True)
     parser.add_argument("--num-rows", type=int, default=DEFAULT_NUM_ROWS)
@@ -235,6 +254,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    """CLI entry point for preparing source data files."""
     args = _build_arg_parser().parse_args()
     _load_local_env()
     _ensure_data_dirs()

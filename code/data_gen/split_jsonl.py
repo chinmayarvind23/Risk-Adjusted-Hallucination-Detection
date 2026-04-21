@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+"""Split a large JSONL file into smaller JSONL chunks.
+
+This is a helper for long generation runs. It does not change content, only how
+the file is partitioned on disk.
+"""
+
 import argparse
 import math
 from pathlib import Path
@@ -7,11 +13,13 @@ from typing import List
 
 
 def _read_jsonl_lines(path: Path) -> List[str]:
+    """Read non-empty JSONL lines exactly as stored."""
     with path.open("r", encoding="utf-8") as handle:
         return [line for line in handle if line.strip()]
 
 
 def split_jsonl(input_path: Path, output_dir: Path, num_splits: int, prefix: str) -> None:
+    """Write evenly sized JSONL chunks for easier batched processing."""
     if num_splits <= 0:
         raise ValueError("num_splits must be positive")
 
@@ -46,6 +54,7 @@ def split_jsonl(input_path: Path, output_dir: Path, num_splits: int, prefix: str
 
 
 def main() -> None:
+    """CLI entry point for splitting a JSONL file into smaller pieces."""
     parser = argparse.ArgumentParser(description="Split a JSONL file into multiple smaller JSONL files.")
     parser.add_argument("--input", required=True, help="Path to the source JSONL file.")
     parser.add_argument("--output-dir", required=True, help="Directory where split files will be written.")

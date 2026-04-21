@@ -1,9 +1,18 @@
 from __future__ import annotations
 
+"""Fit train-set z-score stats and apply them to train, validation, and test.
+
+This follows standard detector preprocessing practice:
+- fit mean and standard deviation on train only
+- reuse those same values for validation and test
+- normalize each feature column independently
+"""
+
 import argparse
 import csv
 import json
 import math
+import sys
 from pathlib import Path
 from typing import Dict, List
 
@@ -16,12 +25,25 @@ FEATURE_COLUMNS = [
 ]
 
 
+def _set_csv_field_limit() -> None:
+    limit = sys.maxsize
+    while True:
+        try:
+            csv.field_size_limit(limit)
+            return
+        except OverflowError:
+            limit //= 10
+
+
 def _read_csv(path: Path) -> List[Dict[str, str]]:
+    """Read one split CSV while allowing long text fields."""
+    _set_csv_field_limit()
     with path.open("r", encoding="utf-8", newline="") as handle:
         return list(csv.DictReader(handle))
 
 
 def _write_csv(path: Path, rows: List[Dict[str, str]], fieldnames: List[str]) -> None:
+    """Write one standardized split."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
@@ -30,10 +52,12 @@ def _write_csv(path: Path, rows: List[Dict[str, str]], fieldnames: List[str]) ->
 
 
 def _to_float(value: str) -> float:
+    """Convert CSV string values to float for numeric preprocessing."""
     return float(value)
 
 
 def _fit_stats(rows: List[Dict[str, str]]) -> Dict[str, Dict[str, float]]:
+    """Compute per-feature train mean and standard deviation."""
     stats: Dict[str, Dict[str, float]] = {}
     for column in FEATURE_COLUMNS:
         values = [_to_float(row[column]) for row in rows]
@@ -47,6 +71,7 @@ def _fit_stats(rows: List[Dict[str, str]]) -> Dict[str, Dict[str, float]]:
 
 
 def _transform_rows(rows: List[Dict[str, str]], stats: Dict[str, Dict[str, float]]) -> List[Dict[str, str]]:
+    """Apply train-fitted z-score normalization to a split."""
     transformed: List[Dict[str, str]] = []
     for row in rows:
         new_row = dict(row)
@@ -61,6 +86,7 @@ def _transform_rows(rows: List[Dict[str, str]], stats: Dict[str, Dict[str, float
 
 
 def main() -> None:
+    """CLI entry point for fitting and applying train-only normalization."""
     parser = argparse.ArgumentParser(description="Fit z-score stats on train split and transform train/val/test CSVs.")
     parser.add_argument("--train", required=True)
     parser.add_argument("--val", required=True)

@@ -1,5 +1,15 @@
 from __future__ import annotations
 
+"""
+Make quick summary plots from a single detector report.
+
+This script is a lightweight plotting helper for one saved training report. It
+is simpler than generate_report_plots.py and focuses on:
+
+- metric comparison across baseline and tuned detectors
+- learned feature coefficients
+"""
+
 import argparse
 import json
 from pathlib import Path
@@ -21,11 +31,13 @@ METRIC_LABELS = {
 
 
 def _load_json(path: Path) -> Dict:
+    """Load a detector report JSON file."""
     with path.open("r", encoding="utf-8") as handle:
         return json.load(handle)
 
 
 def _extract_method_metrics(report: Dict) -> Dict[str, Dict[str, Dict[str, float]]]:
+    """Collect the detector variants that should appear in the summary plots."""
     methods = {
         "Baseline LogReg": report["logistic_regression"],
         "Manual Weighted": report["manual_weighted_ablation"],
@@ -36,6 +48,7 @@ def _extract_method_metrics(report: Dict) -> Dict[str, Dict[str, Dict[str, float
 
 
 def _plot_metric_comparison(report: Dict, output_path: Path) -> None:
+    """Draw grouped bars for validation and test metrics."""
     methods = _extract_method_metrics(report)
     method_names = list(methods.keys())
 
@@ -64,6 +77,7 @@ def _plot_metric_comparison(report: Dict, output_path: Path) -> None:
 
 
 def _plot_coefficients(report: Dict, output_path: Path) -> None:
+    """Draw learned feature weights for baseline and tuned logistic regression."""
     coeffs = report["logistic_regression"]["coefficients"]
     tuned_coeffs = None
     if "hyperparameter_tuning" in report and report["hyperparameter_tuning"].get("best_trial"):
@@ -96,6 +110,7 @@ def _plot_coefficients(report: Dict, output_path: Path) -> None:
 
 
 def main() -> None:
+    """Generate quick detector summary figures from one saved report."""
     parser = argparse.ArgumentParser(description="Plot detector metrics and coefficients from a logreg report JSON.")
     parser.add_argument("--report", required=True, help="Path to phantom_4000_logreg_report.json")
     parser.add_argument("--output-dir", required=True, help="Directory for output PNGs")

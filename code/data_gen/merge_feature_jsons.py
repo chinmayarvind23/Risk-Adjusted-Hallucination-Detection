@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+"""Merge multiple generated feature JSON files and compute a simple summary.
+
+This is helpful when feature generation was run in parts and the detector needs
+one combined file.
+"""
+
 import argparse
 import json
 from pathlib import Path
@@ -7,6 +13,7 @@ from typing import Any, Dict, List, Optional, Sequence
 
 
 def _load_json_list(path: Path) -> List[Dict[str, Any]]:
+    """Read one JSON file that stores a list of example records."""
     with path.open("r", encoding="utf-8") as handle:
         data = json.load(handle)
     if not isinstance(data, list):
@@ -15,6 +22,7 @@ def _load_json_list(path: Path) -> List[Dict[str, Any]]:
 
 
 def _mean(values: Sequence[Optional[float]]) -> Optional[float]:
+    """Average optional floats while skipping missing values."""
     filtered = [value for value in values if value is not None]
     if not filtered:
         return None
@@ -22,6 +30,7 @@ def _mean(values: Sequence[Optional[float]]) -> Optional[float]:
 
 
 def _label_histogram(records: Sequence[Dict[str, Any]], key: str) -> Dict[str, int]:
+    """Count label values for one field across all records."""
     histogram: Dict[str, int] = {}
     for record in records:
         value = record.get(key)
@@ -32,6 +41,7 @@ def _label_histogram(records: Sequence[Dict[str, Any]], key: str) -> Dict[str, i
 
 
 def _judge_histogram(records: Sequence[Dict[str, Any]]) -> Dict[str, int]:
+    """Count binary judge labels from the nested judge block."""
     histogram: Dict[str, int] = {}
     for record in records:
         judge = record.get("judge_label") or {}
@@ -43,6 +53,7 @@ def _judge_histogram(records: Sequence[Dict[str, Any]]) -> Dict[str, int]:
 
 
 def summarize(records: Sequence[Dict[str, Any]], source_files: Sequence[Path]) -> Dict[str, Any]:
+    """Build a compact dataset-level summary of the merged feature file."""
     summary: Dict[str, Any] = {
         "num_examples": len(records),
         "source_files": [str(path) for path in source_files],
@@ -85,6 +96,7 @@ def summarize(records: Sequence[Dict[str, Any]], source_files: Sequence[Path]) -
 
 
 def main() -> None:
+    """CLI entry point for merging partial JSON feature files."""
     parser = argparse.ArgumentParser(description="Merge per-split feature JSON files into one JSON file.")
     parser.add_argument("--inputs", nargs="+", required=True, help="Input feature JSON files to merge in order.")
     parser.add_argument("--output", required=True, help="Merged output JSON path.")

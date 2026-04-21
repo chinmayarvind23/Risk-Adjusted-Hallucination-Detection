@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+"""Flatten merged feature JSON into a row-wise CSV table for detector training.
+
+The generator stores nested JSON because it is convenient for feature
+computation and inspection. The detector stage needs one row per example with
+one column per feature, so this file performs that flattening step.
+"""
+
 import argparse
 import csv
 import json
@@ -8,12 +15,14 @@ from typing import Any, Dict, Iterable, List, Optional
 
 
 def _safe_get(mapping: Optional[Dict[str, Any]], key: str) -> Any:
+    """Return a nested value safely when optional feature blocks are missing."""
     if not mapping:
         return None
     return mapping.get(key)
 
 
 def _flatten_record(record: Dict[str, Any]) -> Dict[str, Any]:
+    """Convert one nested generation record into one flat detector row."""
     token_uncertainty = record.get("token_uncertainty") or {}
     self_consistency = record.get("self_consistency") or {}
     semantic_entropy = record.get("semantic_entropy") or {}
@@ -53,6 +62,7 @@ def _flatten_record(record: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _load_records(path: Path) -> List[Dict[str, Any]]:
+    """Load the merged JSON list produced after feature generation."""
     with path.open("r", encoding="utf-8") as handle:
         data = json.load(handle)
     if not isinstance(data, list):
@@ -61,6 +71,7 @@ def _load_records(path: Path) -> List[Dict[str, Any]]:
 
 
 def _write_csv(rows: Iterable[Dict[str, Any]], output_path: Path) -> None:
+    """Write the flat feature table to CSV for later split and training steps."""
     rows = list(rows)
     if not rows:
         raise ValueError("No rows to write")
@@ -72,6 +83,7 @@ def _write_csv(rows: Iterable[Dict[str, Any]], output_path: Path) -> None:
 
 
 def _write_jsonl(rows: Iterable[Dict[str, Any]], output_path: Path) -> None:
+    """Optional JSONL output for workflows that prefer line-delimited records."""
     with output_path.open("w", encoding="utf-8") as handle:
         for row in rows:
             handle.write(json.dumps(row, ensure_ascii=False))
@@ -79,6 +91,7 @@ def _write_jsonl(rows: Iterable[Dict[str, Any]], output_path: Path) -> None:
 
 
 def main() -> None:
+    """CLI entry point for building a flat feature table from merged JSON."""
     parser = argparse.ArgumentParser(description="Build a flat feature table from merged generation-feature JSON.")
     parser.add_argument("--input", required=True, help="Merged feature JSON file.")
     parser.add_argument("--output-csv", required=True, help="Output CSV path.")
