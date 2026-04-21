@@ -332,7 +332,7 @@ What to notice in the transfer figures:
 - the reliability diagram is clearly worse than the in-domain PHANTOM and in-domain WikiQA diagrams
 - the selective curves do not show the same clean safety gain pattern as the source-domain results
 
-This is a real result, not a failure of the experiment. It means the transfer question was tested honestly and the answer was mostly negative.
+This is a real result, not a failure of the experiment. It means the transfer question was tested and the answer was mostly negative.
 
 ## 8. Transfer experiment 2: WikiQA to PHANTOM
 
@@ -384,7 +384,7 @@ In simple words:
 
 > The detector can learn useful risk signals inside one evidence regime, but those signals do not carry over well to a different dataset without major loss.
 
-This is a strong and honest result. It suggests that:
+This is a strong result. It suggests that:
 
 - hallucination patterns depend on the evidence regime
 - calibration is not stable under shift
@@ -797,9 +797,9 @@ Recommended poster flow:
 
 > Combining uncertainty and groundedness helps inside one dataset, but cross-dataset transfer remains hard.
 
-## 14. Honest limitations
+## 14. Limitations
 
-The repo supports these honest limitations:
+The repo supports these limitations:
 
 - the method is grounded in paper ideas, but it is not a direct reproduction package
 - WikiQA behaves differently from PHANTOM
