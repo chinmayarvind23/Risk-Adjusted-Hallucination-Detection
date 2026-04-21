@@ -17,7 +17,7 @@
     },
     "intercept": -0.9983114332121237
   },
-  "platt_scaling": {
+  "selected_calibration": {
     "method": "Platt scaling",
     "fit_parameters": {
       "coef": 1.4563942491817634,
@@ -4361,5 +4361,72 @@
         "selective_accuracy": 0.6831683168316831
       }
     ]
+  },
+  "platt_scaling": {
+    "method": "Platt scaling",
+    "fit_parameters": {
+      "coef": 1.4563942491817634,
+      "intercept": 0.5817444014971648
+    },
+    "raw_metrics": {
+      "val": {
+        "nll": 0.4676652215462011,
+        "ece": 0.06939118242429625,
+        "brier": 0.1514270357339559,
+        "classification_metrics": {
+          "auroc": 0.833115512214738,
+          "auprc": 0.7554614716473252,
+          "accuracy": 0.7807308970099668,
+          "precision": 0.8333333333333334,
+          "recall": 0.40816326530612246,
+          "f1": 0.547945205479452,
+          "positive_rate_at_threshold": 0.15946843853820597
+        }
+      },
+      "test": {
+        "nll": 0.5207308796385559,
+        "ece": 0.059848468252627955,
+        "brier": 0.1694828228147215,
+        "classification_metrics": {
+          "auroc": 0.7729971819645732,
+          "auprc": 0.6450967812971509,
+          "accuracy": 0.759075907590759,
+          "precision": 0.7674418604651163,
+          "recall": 0.34375,
+          "f1": 0.4748201438848921,
+          "positive_rate_at_threshold": 0.1419141914191419
+        }
+      }
+    },
+    "calibrated_metrics": {
+      "val": {
+        "nll": 0.45289611201410085,
+        "ece": 0.04107970581193595,
+        "brier": 0.1472023964704726,
+        "classification_metrics": {
+          "auroc": 0.833115512214738,
+          "auprc": 0.7554614716473252,
+          "accuracy": 0.7873754152823921,
+          "precision": 0.7741935483870968,
+          "recall": 0.4897959183673469,
+          "f1": 0.6,
+          "positive_rate_at_threshold": 0.2059800664451827
+        }
+      },
+      "test": {
+        "nll": 0.5247509297325935,
+        "ece": 0.07343065161080854,
+        "brier": 0.16521549690300666,
+        "classification_metrics": {
+          "auroc": 0.7729971819645732,
+          "auprc": 0.6450967812971509,
+          "accuracy": 0.7854785478547854,
+          "precision": 0.7818181818181819,
+          "recall": 0.4479166666666667,
+          "f1": 0.5695364238410596,
+          "positive_rate_at_threshold": 0.18151815181518152
+        }
+      }
+    }
   }
 }
