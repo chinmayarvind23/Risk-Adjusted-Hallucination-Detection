@@ -71,7 +71,7 @@ Why:
 3. It generalizes better than isotonic regression.
 4. It is still simple and easy to justify in the report.
 
-The raw detector still has the best test ECE, so the honest claim is not that Platt scaling dominates every method. The honest claim is that Platt scaling gives the best overall practical calibration tradeoff for this project.
+The raw detector still has the best test ECE, so the correct claim is not that Platt scaling dominates every method. The correct claim is that Platt scaling gives the best overall practical calibration tradeoff for this project.
 
 ## Final decision
 

@@ -212,7 +212,7 @@ From the tuned WikiQA detector report:
 - recall: `0.7234`
 - F1: `0.5231`
 
-This is clearly weaker than PHANTOM, but it is still above a trivial detector.
+This is weaker than PHANTOM, but it is still above a trivial detector.
 
 ### 6.2 What the weights mean
 
@@ -329,10 +329,10 @@ Simple interpretation:
 
 What to notice in the transfer figures:
 
-- the reliability diagram is clearly worse than the in-domain PHANTOM and in-domain WikiQA diagrams
+- the reliability diagram is worse than the in-domain PHANTOM and in-domain WikiQA diagrams
 - the selective curves do not show the same clean safety gain pattern as the source-domain results
 
-This is a real result, not a failure of the experiment. It means the transfer question was tested and the answer was mostly negative.
+This result shows that the transfer question was tested and the outcome was mostly negative.
 
 ## 8. Transfer experiment 2: WikiQA to PHANTOM
 
@@ -482,7 +482,7 @@ This is why transfer is hard.
 
 ### 10.3 Do the learned coefficients mismatch across datasets
 
-Yes, clearly.
+Yes.
 
 From [phantom_4000_frozen_bundle.json](C:/Users/chinm/Documents/coursework/5541/project/Risk-Adjusted-Hallucination-Detection/results/calibration/phantom_4000_frozen_bundle.json), PHANTOM learned:
 
@@ -505,7 +505,7 @@ This means:
 - self-consistency stays positive but becomes much weaker
 - groundedness stays negative in both datasets
 
-So the coefficient mismatch is real and strong. The transferred detector is not just using the wrong threshold. It is using the wrong **direction** for multiple signals.
+So the coefficient mismatch is substantial. The transferred detector is not just using the wrong threshold. It is using the wrong **direction** for multiple signals.
 
 ### 10.4 Does calibration fail more than ranking, or does ranking fail first
 
@@ -721,7 +721,7 @@ Pattern:
 
 - the combined detector is best
 - the learned weights make sense
-- abstention clearly helps
+- abstention helps
 
 ### Best WikiQA figures
 
@@ -765,7 +765,7 @@ The report should emphasize three points:
    - both transfer directions are weak
    - this shows the detector does not generalize well across datasets without adaptation
 
-That is a strong and believable final story.
+That is a strong final story.
 
 ## 13. What to emphasize in the poster
 
@@ -807,7 +807,7 @@ The repo supports these limitations:
 - transfer is poor in both directions
 - the feature set is useful, but not universal
 
-These limitations do not weaken the project. They make the conclusions more credible.
+These limitations help keep the conclusions well supported.
 
 ## 15. Final bottom line
 

@@ -237,7 +237,7 @@ This result supports three points:
 
 1. The tuned PHANTOM detector learns sensible risk signals.
 2. Platt scaling is a reasonable final calibration choice.
-   It improves validation calibration clearly and improves several threshold-based decision metrics on test, even though test probability calibration is mixed.
+   It improves validation calibration and improves several threshold-based decision metrics on test, even though test probability calibration is mixed.
 3. The abstention rule works well.
    Abstaining on roughly the riskiest `20%` of cases raises the quality of the kept answers substantially while preserving about `80%` coverage.
 

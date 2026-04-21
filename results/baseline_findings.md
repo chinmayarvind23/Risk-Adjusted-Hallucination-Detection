@@ -121,7 +121,7 @@ Test metrics:
 Simple meaning:
 
 - this is basically near chance
-- it confirms the real models are learning actual structure from the features
+- it confirms the trained models are learning structure from the features
 
 ## Overall takeaway
 
