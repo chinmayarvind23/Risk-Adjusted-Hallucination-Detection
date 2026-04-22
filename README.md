@@ -711,6 +711,7 @@ The takeaways from this repo are:
 - WikiQA is weaker and uses a different final calibrator
 - calibration and abstention help most on PHANTOM
 - both transfer directions are poor
+- transfer errors come from both detector failure and calibration shift, with detector ranking failure appearing first under regime change
 - groundedness is the most stable feature across datasets
 - uncertainty features are more regime-dependent
 
