@@ -20,6 +20,10 @@ The final repo uses two datasets:
 - **PHANTOM**
 - **WikiQA**
 
+Shared data folder:
+
+- https://drive.google.com/drive/folders/1aHTuwsl0TuDfcwWspzaYjyUueDXrDSw5?usp=sharing
+
 The transfer experiments are:
 
 - **Transfer 1:** train on PHANTOM, calibrate on PHANTOM validation, freeze detector plus calibration plus threshold, test on WikiQA
