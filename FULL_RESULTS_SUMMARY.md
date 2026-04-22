@@ -100,7 +100,7 @@ So the full planned flow is now present in the repo.
 
 ## 5. PHANTOM standalone findings
 
-PHANTOM is the cleanest success case in the project.
+PHANTOM is the cleanest success case.
 
 ### 5.1 Detector quality
 
@@ -131,7 +131,7 @@ Simple reading:
 - more semantic entropy means more risk
 - more groundedness means less risk
 
-This is exactly the pattern we hoped for.
+This is exactly the pattern we were expecting.
 
 ### 5.3 Baseline comparison
 
@@ -745,7 +745,7 @@ Pattern:
 - calibration drifts badly
 - this supports the conclusion that cross-regime transfer is difficult
 
-## 12. What to emphasize in the report
+## 12. Report emphasis
 
 The report should emphasize three points:
 
@@ -767,7 +767,7 @@ The report should emphasize three points:
 
 That is a strong final story.
 
-## 13. What to emphasize in the poster
+## 13. Poster emphasis
 
 The poster should be simpler than the report.
 
@@ -799,15 +799,11 @@ Recommended poster flow:
 
 ## 14. Limitations
 
-The repo supports these limitations:
-
 - the method is grounded in paper ideas, but it is not a direct reproduction package
 - WikiQA behaves differently from PHANTOM
 - calibration method choice changes by dataset
 - transfer is poor in both directions
 - the feature set is useful, but not universal
-
-These limitations help keep the conclusions well supported.
 
 ## 15. Final bottom line
 
@@ -815,4 +811,4 @@ The full repo now supports this final conclusion:
 
 > A four-feature hallucination detector built from token uncertainty, self-consistency disagreement, semantic entropy, and groundedness can work reasonably well within a dataset, especially on PHANTOM. Calibration and abstention make the detector more useful as a reliability tool. However, when the detector is frozen and moved across datasets, performance drops sharply in both directions, which shows that evidence regime and dataset shift matter a lot.
 
-That is the clearest summary of the repo as it stands.
+That is the clearest summary.
