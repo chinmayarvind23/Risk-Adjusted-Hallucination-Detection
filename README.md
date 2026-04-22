@@ -76,7 +76,7 @@ python -m compileall code
 
 ## Quickstart
 
-If you already have the prepared PHANTOM and WikiQA feature tables in `data/`, this is the shortest path to regenerate the main standalone and transfer results.
+If prepared PHANTOM and WikiQA feature tables are already in `data/`, this is the shortest path to regenerate the main standalone and transfer results.
 
 ### PHANTOM standalone
 
@@ -276,21 +276,21 @@ The core detector workflow is:
 
 Important standardization rule:
 
-- z-score standardize **within each feature column**
-- do **not** standardize across rows
-- do **not** use validation or test statistics to fit the scaler
-- do this only for detector training and evaluation, not during answer generation
+- z-score standardization **within each feature column**
+- does **not** standardize across rows
+- does **not** use validation or test statistics to fit the scaler
+- done only for detector training and evaluation, not during answer generation
 
 ## Feature generation from raw data
 
-If you need to prepare local PHANTOM or WikiQA subsets first:
+Prepare local PHANTOM or WikiQA subsets first:
 
 ```powershell
 python code\data_gen\main.py --dataset phantom --num-rows 4000
 python code\data_gen\main.py --dataset wikiqa --split train --num-rows 1300 --retrieve
 ```
 
-If you need to generate answers and feature JSON directly:
+Generate answers and feature JSON directly:
 
 ```powershell
 python code\llm_generations\main.py `
@@ -298,7 +298,7 @@ python code\llm_generations\main.py `
   --data-file <path_to_input_jsonl> `
   --output-file <path_to_output_json> `
   --model qwen3:8b `
-  --judge-model facebook/bart-large-mnli `
+  --judge-model qwen3:14b `
   --num-rows 4000 `
   --k 5
 ```
@@ -309,7 +309,7 @@ python code\llm_generations\main.py `
   --data-file <path_to_input_jsonl> `
   --output-file <path_to_output_json> `
   --model qwen3:8b `
-  --judge-model facebook/bart-large-mnli `
+  --judge-model qwen3:14b `
   --num-rows 1300 `
   --k 5
 ```
@@ -704,7 +704,7 @@ python code\analysis\transfer_diagnostics.py `
 
 ## Main result summary
 
-The final story supported by this repo is:
+The takeaways from this repo are:
 
 - the four-feature detector works reasonably well in-domain
 - PHANTOM is the strongest standalone result
@@ -716,7 +716,6 @@ The final story supported by this repo is:
 
 ## Notes
 
-- Older text in the repo may refer to HalluLens. The final second dataset in the completed pipeline is **WikiQA**.
 - PHANTOM uses **Platt scaling** as the final calibration method.
 - WikiQA uses **isotonic regression** as the final calibration method.
-- The code is grounded in paper ideas, but it should be described as a practical research implementation, not an exact reproduction package.
+- The code is grounded in paper ideas, but are practical research implementations, not an exact reproduction package.
