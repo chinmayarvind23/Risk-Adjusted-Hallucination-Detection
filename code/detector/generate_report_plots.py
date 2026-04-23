@@ -78,6 +78,16 @@ BASELINE_COLORS = {
 }
 
 
+def _dataset_display_name(prefix: str) -> str:
+    """Map an output prefix to a clean dataset name for plot titles."""
+    lowered = prefix.lower()
+    if "wikiqa" in lowered:
+        return "WikiQA"
+    if "phantom" in lowered:
+        return "PHANTOM"
+    return prefix
+
+
 def _load_json(path: Path) -> Dict:
     """Load a saved JSON report."""
     with path.open("r", encoding="utf-8") as handle:
@@ -137,7 +147,7 @@ def _extract_best_trials(baseline_report: Dict) -> Dict[str, Dict]:
     return best_trials
 
 
-def _plot_baseline_metric_bars(baseline_report: Dict, output_path: Path) -> None:
+def _plot_baseline_metric_bars(baseline_report: Dict, output_path: Path, dataset_name: str) -> None:
     """Draw a compact baseline comparison for the most poster-friendly metrics."""
     best_trials = _extract_best_trials(baseline_report)
     metrics = ["auroc", "auprc", "f1", "accuracy"]
@@ -158,13 +168,13 @@ def _plot_baseline_metric_bars(baseline_report: Dict, output_path: Path) -> None
         ax.set_title(METRIC_LABELS[metric_name])
         ax.grid(axis="y", alpha=0.25)
 
-    fig.suptitle("PHANTOM Test Performance Across Detector Baselines")
+    fig.suptitle(f"{dataset_name} Test Performance Across Detector Baselines")
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=220, bbox_inches="tight")
     plt.close(fig)
 
 
-def _plot_baseline_metric_heatmap(baseline_report: Dict, output_path: Path) -> None:
+def _plot_baseline_metric_heatmap(baseline_report: Dict, output_path: Path, dataset_name: str) -> None:
     """Draw a denser report-style comparison across all key metrics."""
     best_trials = _extract_best_trials(baseline_report)
     ordered_names = [name for name in BASELINE_PLOT_ORDER if name in best_trials]
@@ -182,7 +192,7 @@ def _plot_baseline_metric_heatmap(baseline_report: Dict, output_path: Path) -> N
     ax.set_xticklabels([METRIC_LABELS[m] for m in metrics], rotation=30, ha="right")
     ax.set_yticks(np.arange(len(ordered_names)))
     ax.set_yticklabels([BASELINE_DISPLAY_NAMES[name] for name in ordered_names])
-    ax.set_title("Baseline Comparison Heatmap on PHANTOM Test Set")
+    ax.set_title(f"Baseline Comparison Heatmap on {dataset_name} Test Set")
 
     for i in range(matrix.shape[0]):
         for j in range(matrix.shape[1]):
@@ -273,6 +283,7 @@ def _plot_roc_pr_curves(
     tuned_report: Dict,
     test_rows: Sequence[Dict[str, str]],
     output_path: Path,
+    dataset_name: str,
 ) -> None:
     """Compare ranking behavior for the strongest baselines on the test set."""
     best_trials = _extract_best_trials(baseline_report)
@@ -319,7 +330,7 @@ def _plot_roc_pr_curves(
         fpr, tpr, _ = roc_curve(y_test, scores)
         roc_ax.plot(fpr, tpr, linewidth=2, label=name)
     roc_ax.plot([0, 1], [0, 1], linestyle="--", color="gray", linewidth=1)
-    roc_ax.set_title("ROC Curves on PHANTOM Test Set")
+    roc_ax.set_title(f"ROC Curves on {dataset_name} Test Set")
     roc_ax.set_xlabel("False Positive Rate")
     roc_ax.set_ylabel("True Positive Rate")
     roc_ax.grid(alpha=0.25)
@@ -329,7 +340,7 @@ def _plot_roc_pr_curves(
     for name, scores in curve_specs:
         precision, recall, _ = precision_recall_curve(y_test, scores)
         pr_ax.plot(recall, precision, linewidth=2, label=name)
-    pr_ax.set_title("Precision-Recall Curves on PHANTOM Test Set")
+    pr_ax.set_title(f"Precision-Recall Curves on {dataset_name} Test Set")
     pr_ax.set_xlabel("Recall")
     pr_ax.set_ylabel("Precision")
     pr_ax.grid(alpha=0.25)
@@ -393,14 +404,17 @@ def main() -> None:
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+    dataset_name = _dataset_display_name(args.prefix)
 
     _plot_baseline_metric_bars(
         baseline_report,
         output_dir / f"{args.prefix}_baseline_metric_bars.png",
+        dataset_name,
     )
     _plot_baseline_metric_heatmap(
         baseline_report,
         output_dir / f"{args.prefix}_baseline_metric_heatmap.png",
+        dataset_name,
     )
     _plot_tuned_coefficients(
         tuned_report,
@@ -411,6 +425,7 @@ def main() -> None:
         tuned_report,
         test_rows,
         output_dir / f"{args.prefix}_roc_pr_curves.png",
+        dataset_name,
     )
     _plot_feature_distributions(
         combined_rows,
